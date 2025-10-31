@@ -1,0 +1,85 @@
+#######################################
+# Class (KEYWORD1)
+#######################################
+MU_Modem	KEYWORD1
+
+#######################################
+# Methods (KEYWORD2)
+#######################################
+begin						KEYWORD2
+CheckCarrierSense			KEYWORD2
+ClearRouteInfo				KEYWORD2
+DeletePacket				KEYWORD2
+GetAllChannelsRssi			KEYWORD2
+GetAllChannelsRssiAsync		KEYWORD2
+GetAutoReplyRoute			KEYWORD2
+GetChannel					KEYWORD2
+GetDestinationID			KEYWORD2
+GetEquipmentID				KEYWORD2
+GetGroupID					KEYWORD2
+GetPacket					KEYWORD2
+GetPower					KEYWORD2
+GetRouteInfo				KEYWORD2
+GetRouteInfoAddMode			KEYWORD2
+GetRssiCurrentChannel		KEYWORD2
+GetRssiCurrentChannelAsync	KEYWORD2
+GetSerialNumber				KEYWORD2
+GetSerialNumberAsync		KEYWORD2
+GetUserID					KEYWORD2
+HasPacket					KEYWORD2
+SendRawCommand				KEYWORD2
+SetAddRssiValue				KEYWORD2
+SetAsyncCallback			KEYWORD2
+SetAutoReplyRoute			KEYWORD2
+SetBaudRate					KEYWORD2
+SetChannel					KEYWORD2
+SetDestinationID			KEYWORD2
+SetEquipmentID				KEYWORD2
+SetGroupID					KEYWORD2
+SetPower					KEYWORD2
+SetRouteInfo				KEYWORD2
+SetRouteInfoAddMode			KEYWORD2
+setDebugStream				KEYWORD2
+SoftReset					KEYWORD2
+TransmitData				KEYWORD2
+TransmitDataFireAndForget	KEYWORD2
+TransmitDataWithRoute		KEYWORD2
+Work						KEYWORD2
+
+#######################################
+# Enums & Constants (LITERAL1)
+#######################################
+MU_DEFAULT_BAUDRATE	LITERAL1
+MU_CHANNEL_MIN_429	LITERAL1
+MU_CHANNEL_MAX_429	LITERAL1
+MU_CHANNEL_MIN_1216	LITERAL1
+MU_CHANNEL_MAX_1216	LITERAL1
+
+MU_MAX_PAYLOAD_LEN		LITERAL1
+MU_Modem_DtAck			LITERAL1
+MU_Modem_Error			LITERAL1
+MU_Modem_FrequencyModel	LITERAL1
+MU_Modem_Mode			LITERAL1
+MU_Modem_Response		LITERAL1
+
+Busy					LITERAL1
+BufferTooSmall			LITERAL1
+Channel					LITERAL1
+DataReceived			LITERAL1
+Fail					LITERAL1
+FailLbt					LITERAL1
+FskBin					LITERAL1
+FskCmd					LITERAL1
+GenericResponse			LITERAL1
+Idle					LITERAL1
+InvalidArg				LITERAL1
+MHz_1216				LITERAL1
+MHz_429					LITERAL1
+Ok						LITERAL1
+ParseError				LITERAL1
+RssiAllChannels			LITERAL1
+RssiCurrentChannel		LITERAL1
+SaveValue				LITERAL1
+SerialNumber			LITERAL1
+ShowMode				LITERAL1
+Timeout					LITERAL1
