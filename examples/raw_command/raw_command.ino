@@ -1,7 +1,11 @@
 /**
  * @file raw_command_example.ino
  * @brief MU-ModemライブラリのSendRawCommand関数を使用したサンプル
+ * @copyright Copyright (c) 2025 CircuitDesign,Inc.
+ * This software is released under the MIT License.
+ * http://opensource.org/licenses/mit-license.php
  *
+ * @details
  * このサンプルプログラムは、MU-Modemライブラリに標準で実装されていない
  * 任意のコマンドをモデムに送信し、その応答を受信する方法を示します。
  *
@@ -19,13 +23,13 @@
 MU_Modem modem;
 
 void setup() {
-  // デバッグ用のシリアルを開始
   Serial.begin(115200);
-  while (!Serial);
-  Serial.println("Raw Command Example");
 
-  // MUモデムとの通信にSerial1を使用します。
-  // モデム用のシリアルを開始
+  
+  while (!Serial);
+  Serial.println("SendRawCommand関数サンプル");
+
+  // モデム用のシリアルポートを初期化
   Serial1.begin(MU_DEFAULT_BAUDRATE);
 
   // モデムドライバを初期化します。
@@ -33,10 +37,10 @@ void setup() {
   MU_Modem_Error err = modem.begin(Serial1, MU_Modem_FrequencyModel::MHz_429);
   if (err != MU_Modem_Error::Ok)
   {
-    Serial.println("MU Modem initialization failed. Please check the connection.");
+    Serial.println("MUモデムの初期化に失敗しました。接続を確認してください。");
     while (true);
   }
-  Serial.println("MU Modem initialized.");
+  Serial.println("MUモデムが初期化されました。");
 }
 
 void loop() {
@@ -48,7 +52,7 @@ void loop() {
   if (millis() - lastSendTime > 5000) {
     lastSendTime = millis();
 
-    Serial.println("\n--- Sending @VR command ---");
+    Serial.println("\n--- @VRコマンドを送信します ---");
 
     // モデムからのレスポンスを格納するためのバッファ
     char responseBuffer[64];
@@ -60,14 +64,14 @@ void loop() {
 
     // 結果をシリアルモニタに表示
     if (err == MU_Modem_Error::Ok) {
-      Serial.print("Success! Response: ");
+      Serial.print("成功！ 応答: ");
       Serial.println(responseBuffer);
     } else if (err == MU_Modem_Error::Fail) {
-      Serial.println("Failed. Timeout or parse error occurred.");
+      Serial.println("失敗。タイムアウトまたは解析エラーが発生しました。");
     } else if (err == MU_Modem_Error::BufferTooSmall) {
-      Serial.println("Failed. Response was too long for the buffer.");
+      Serial.println("失敗。応答がバッファに対して長すぎます。");
     } else {
-      Serial.print("An error occurred: ");
+      Serial.print("エラーが発生しました: ");
       Serial.println((int)err);
     }
   }

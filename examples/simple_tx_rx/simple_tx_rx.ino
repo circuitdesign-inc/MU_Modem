@@ -1,10 +1,14 @@
 /**
  * @file simple_tx_rx.ino
  * @brief MU-Modemライブラリの基本的な送受信サンプル
+ * @copyright Copyright (c) 2025 CircuitDesign,Inc.
+ * This software is released under the MIT License.
+ * http://opensource.org/licenses/mit-license.php
  *
- * このサンプルプログラムは、MU-Modemライブラリを使用して、
- * モデムの初期化、各種IDとチャンネルの設定、そして定期的なデータ送信と
- * 非同期のデータ受信を行う基本的な方法を示します。
+ * @details
+ * このサンプルプログラムは、MU-Modemライブラリを使用して、モデムの初期化、
+ * 各種IDとチャンネルの設定、そして定期的なデータ送信と非同期のデータ受信を
+ * 行う基本的な方法を示します。
  *
  * 動作:
  * 1. `setup()` 関数でモデムを初期化し、チャンネル、グループID、目的局ID、自機IDを設定します。
@@ -51,11 +55,12 @@ void mu_callback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t v
 }
 
 void setup() {
-  // デバッグ用のシリアルを開始
   Serial.begin(115200);
+  
+  // シリアルポートが開くまで待機
   while (!Serial);
 
-  // MUモデムとの通信用のシリアルを開始
+  // モデム用のシリアルポートを初期化
   Serial1.begin(MU_DEFAULT_BAUDRATE);
 
   // モデムを初期化します。

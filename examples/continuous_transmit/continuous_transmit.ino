@@ -1,7 +1,11 @@
 /**
  * @file continuous_transmit.ino
  * @brief MU-Modemライブラリの連続送信機能を使用したサンプル
+ * @copyright Copyright (c) 2025 CircuitDesign,Inc.
+ * This software is released under the MIT License.
+ * http://opensource.org/licenses/mit-license.php
  *
+ * @details
  * このサンプルプログラムは、CheckCarrierSense() と TransmitDataFireAndForget() を組み合わせて、
  * モデムのダブルバッファと連続送信モードを活用し、高スループットでデータを連続送信する方法を示します。
  *
@@ -26,10 +30,10 @@
  * 3. データを受信するとコールバック関数が呼び出され、受信内容がシリアルモニタに表示されます。
  *
  * 連続送信条件について:
- * データシートには、*DT応答を確認してから「5ms + (2.08ms * データ数)」以内に次のデータを送れば
- * 連続送信モードになる、と記載されています。
- * TransmitDataFireAndForget()は*DT応答を確認後すぐに制御を返すため、この関数を単純に
- * 連続で呼び出すことで、この条件は自然と満たされ、モデムの性能を最大限に引き出すことができます。
+ * *DT応答を確認してから「5ms + (2.08ms * データ数)」以内に次のデータを送れば連続送信モードになります。
+ * TransmitDataFireAndForget()は*DT応答を確認後すぐに制御を返すため、この関数を連続で呼び出すことで、連続送信状態を保持できます。
+ * 詳細はデータシートをご確認ください。
+ * なお、データバッファのオーバーフローを防止するためにフロー制御端子(RTS,CTS)の接続を推奨します。
  *
  * このサンプルを実行するには、Arduino互換ボードのSerial1に
  * MUモデムが接続されている必要があります。
@@ -52,7 +56,16 @@ const uint8_t DESTINATION_ID = (BOARD_ROLE == ROLE_TRANSMITTER) ? 0x22 : 0x00; /
 MU_Modem modem;
 
 /**
- * @brief モデムからの非同期イベントを処理するコールバック関数 (受信側で使用)
+ * @brief モデムからの非同期イベントを処理するコールバック関数
+ *
+ * データ受信時や非同期コマンドの応答受信時にライブラリから自動的に呼び出されます。
+ * @param error エラーコード
+ * @param responseType 応答の種類
+ * @param value 応答に含まれる数値（RSSIなど）
+ * @param pPayload 受信したデータのペイロードへのポインタ
+ * @param len ペイロードの長さ (バイト単位)
+ * @param pRouteInfo 受信パケットに含まれるルート情報へのポインタ
+ * @param numRouteNodes ルート情報のノード数
  */
 void modemCallback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t value, const uint8_t *pPayload, uint16_t len, const uint8_t* pRouteInfo, uint8_t numRouteNodes)
 {
@@ -75,6 +88,8 @@ void modemCallback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t
 
 void setup() {
   Serial.begin(115200);
+
+  // シリアルポートが開くまで待機
   while (!Serial);
   Serial.println("\n--- 連続送信サンプル ---");
 
@@ -84,6 +99,7 @@ void setup() {
   Serial.println("役割: 受信側");
 #endif
 
+  // モデム用のシリアルポートを初期化
   Serial1.begin(MU_DEFAULT_BAUDRATE);
 
   // デバッグ出力を有効にする (任意)
@@ -112,8 +128,8 @@ void setup() {
   }
   else
   {
-    Serial.printf("ボーレートの変更に失敗しました。エラー: %d\n", (int)err);
-    // エラーが発生しても処理を続行するが、通信は失敗する可能性が高い
+    Serial.printf("ボーレートの変更に失敗しました。処理を停止します。エラー: %d\n", (int)err);
+    while (true);
   }
 
 
@@ -139,6 +155,15 @@ void loop() {
     Serial.println("\n>>> 連続送信処理を開始します...");
 
     // 1. 送信前にキャリアセンスでチャンネルが空いているか確認
+    // ※補足:
+    // このサンプルでは、送信前に CheckCarrierSense() でチャンネルの空きを確認しています。
+    // しかし、その直後に TransmitDataFireAndForget() を呼び出すまでのわずかな時間で
+    // 他の無線機が送信を開始すると、TransmitDataFireAndForget() 内部のキャリアセンスで送信が失敗する可能性があります。
+    //
+    // より確実に連続送信を開始するための方法として、以下のような手順があります。
+    // a. 最初に TransmitData() を使って、ある程度大きなデータ塊を送信する。
+    //    (データサイズは、モデムが最初のキャリアセンス(最大50ms)を行っている間も送信バッファが空にならない程度が目安です)
+    // b. その直後から、間髪入れずに TransmitDataFireAndForget() で後続のデータを次々と送信する。
     Serial.println("1. キャリアセンス実行...");
     MU_Modem_Error cs_err = modem.CheckCarrierSense();
 
@@ -166,14 +191,13 @@ void loop() {
           // エラーが発生したら連続送信を中断
           break;
         }
-        // この関数はすぐに返ってくるため、delayは不要。最速で次のループを実行する。
       }
       Serial.println("<<< 連続送信処理完了。");
 
     }
     else if (cs_err == MU_Modem_Error::FailLbt)
     {
-      Serial.println("   -> チャンネルがビジーのため、今回の送信はスキップします。");
+      Serial.println("   -> チャンネルがビジーのため、送信をスキップします。");
     }
     else
     {

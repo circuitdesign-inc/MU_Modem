@@ -1,7 +1,11 @@
 /**
  * @file relay_transmit.ino
  * @brief MU-Modemライブラリの中継機能を使用したサンプル
+ * @copyright Copyright (c) 2025 CircuitDesign,Inc.
+ * This software is released under the MIT License.
+ * http://opensource.org/licenses/mit-license.php
  *
+ * @details
  * このサンプルプログラムは、MU-Modemライブラリを使用して、
  * 送信元局 -> 中継局 -> 宛先局 という1段の中継通信を行う方法を示します。
  * 送信するデータは送信元局からのみ送信され、中継局・宛先局は受信のみ行います。
@@ -53,6 +57,15 @@ int16_t g_lastRssi = 0;
 
 /**
  * @brief モデムからの非同期イベントを処理するコールバック関数
+ *
+ * データ受信時や非同期コマンドの応答受信時にライブラリから自動的に呼び出されます。
+ * @param error エラーコード
+ * @param responseType 応答の種類
+ * @param value 応答に含まれる数値（RSSIなど）
+ * @param pPayload 受信したデータのペイロードへのポインタ
+ * @param len ペイロードの長さ (バイト単位)
+ * @param pRouteInfo 受信パケットに含まれるルート情報へのポインタ
+ * @param numRouteNodes ルート情報のノード数
  */
 void modemCallback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t value, const uint8_t *pPayload, uint16_t len, const uint8_t* pRouteInfo, uint8_t numRouteNodes)
 {
@@ -82,14 +95,15 @@ void modemCallback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t
 
 void setup() {
   Serial.begin(115200);
+
+  // シリアルポートが開くまで待機
   while (!Serial);
+
   Serial.println("\n--- 中継通信サンプル ---");
   Serial.print("この局のID: 0x"); Serial.println(MY_EQUIPMENT_ID, HEX);
 
+  // モデム用のシリアルポートを初期化
   Serial1.begin(MU_DEFAULT_BAUDRATE);
-
-  // デバッグ出力を有効にする (任意)
-  modem.setDebugStream(&Serial);
 
   // モデムを初期化 (コールバック関数を登録)
   MU_Modem_Error err = modem.begin(Serial1, MU_Modem_FrequencyModel::MHz_429, modemCallback);
@@ -135,11 +149,10 @@ void setup() {
       Serial.print("ルート情報を [0x"); Serial.print(RELAY_ID, HEX);
       Serial.print(", 0x"); Serial.print(DEST_ID, HEX); Serial.println("] に設定しました。");
 
-      // ルートレジスタを使用する設定(@RRON)を有効にします。
-      // この設定は、主に受信側で返信ルートを自動生成するために使われますが、
-      // 送信側で設定しておいても害はありません。
-      // このサンプルでは送信時に手動でルートを指定するため、この設定は必須ではありません。
-      if (modem.SetAutoReplyRoute(false) != MU_Modem_Error::Ok) { // 今回は手動設定なのでOFFでもOK
+      // ルートレジスタの自動設定(@RRON)を変更します。
+      // この設定を有効にすると、受信パケットをもとに、受信側で返信ルートを自動生成し、ルートレジスタに書き込みます。
+      // ルート設定コマンドで設定したルート情報も、データパケットを受ける度に上書きされるので注意してください
+      if (modem.SetAutoReplyRoute(false,false) != MU_Modem_Error::Ok) {
         Serial.println("ルート使用設定(@RRON)に失敗しました。");
       }
     }
@@ -151,7 +164,6 @@ void setup() {
     // 中継局・宛先局はルート設定不要
     // (中継局は受信したパケットのルート情報を見て自動中継する)
     // (宛先局もDIは関係なく、ルート情報で自分が終点になっていれば受信する)
-     // 中継局・宛先局も念のためDIを自局以外(e.g., 0x00)にしておきます
      if (modem.SetDestinationID(0x00, false) != MU_Modem_Error::Ok) {
          Serial.println("ダミー目的局IDの設定に失敗しました。");
      }
@@ -224,6 +236,6 @@ void loop() {
          }
       }
     }
-  } // end if (MY_EQUIPMENT_ID == SOURCE_ID)
+  }
 
-} // end loop
+}

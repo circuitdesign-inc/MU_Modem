@@ -1,7 +1,11 @@
 /**
  * @file advanced_tx_rx_example.ino
  * @brief MU-Modemライブラリの高度な送受信サンプル
+ * @copyright Copyright (c) 2025 CircuitDesign,Inc.
+ * This software is released under the MIT License.
+ * http://opensource.org/licenses/mit-license.php
  *
+ * @details
  * このサンプルプログラムは、MU-Modemライブラリを使用して、
  * 非同期でのデータ受信と、エラー処理を含むデータ送信を行う方法を示します。
  * simple_tx_rx.inoの発展形です。
@@ -21,38 +25,32 @@
 MU_Modem modem;
 
 // --- 受信データ共有用の変数 ---
-// コールバック関数(割り込みコンテキストの可能性)とloop()関数(メインコンテキスト)で
-// 安全にデータをやり取りするためにvolatile修飾子を使用します。
+// コールバック関数とloop()関数で安全にデータをやり取りするためにvolatile修飾子を使用します。
 
-/**
- * @brief データ受信フラグ。コールバックでtrueになり、loopで処理後にfalseになる。
- */
+// データ受信フラグ。コールバックでtrueになり、loopで処理後にfalseになる。
 volatile bool g_packetReceived = false;
 
-/**
- * @brief 受信したペイロードを格納するバッファ。
- */
+// 受信したペイロードを格納するバッファ。
 uint8_t g_receivedPayload[MU_MAX_PAYLOAD_LEN];
 
-/**
- * @brief 受信したペイロードの長さ。
- */
+// @brief 受信したペイロードの長さ。
 uint8_t g_receivedLen = 0;
 
-/**
- * @brief 最後に受信したパケットのRSSI値。
- */
+// @brief 最後に受信したパケットのRSSI値。
 int16_t g_lastRssi = 0;
 
 
 /**
  * @brief モデムからの非同期イベントを処理するコールバック関数
  *
- * @param error イベントに関連するエラーコード
- * @param responseType イベントの種類 (データ受信、RSSI応答など)
- * @param value イベントに関連する数値 (データ受信時はRSSI値)
- * @param pPayload 受信データのペイロードへのポインタ
- * @param len 受信データの長さ
+ * データ受信時や非同期コマンドの応答受信時にライブラリから自動的に呼び出されます。
+ * @param error エラーコード
+ * @param responseType 応答の種類
+ * @param value 応答に含まれる数値（RSSIなど）
+ * @param pPayload 受信したデータのペイロードへのポインタ
+ * @param len ペイロードの長さ (バイト単位)
+ * @param pRouteInfo 受信パケットに含まれるルート情報へのポインタ
+ * @param numRouteNodes ルート情報のノード数
  */
 void modemCallback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t value, const uint8_t *pPayload, uint16_t len, const uint8_t* pRouteInfo, uint8_t numRouteNodes)
 {
@@ -85,15 +83,13 @@ void modemCallback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t
 
 void setup() {
   Serial.begin(115200);
+
+  // シリアルポートが開くまで待機
   while (!Serial);
   Serial.println("\n--- 高度な送受信サンプル ---");
 
+  // モデム用のシリアルポートを初期化
   Serial1.begin(MU_DEFAULT_BAUDRATE);
-
-  // platformioを使用している場合、ライブラリのデバッグ出力を有効にすると、送受信の詳細が確認できて便利です。
-  // デバッグ機能を有効にするには、platformio.iniに以下を追加してください:
-  // build_flags = -D ENABLE_MU_MODEM_DEBUG
-  modem.setDebugStream(&Serial);
 
   // モデムドライバを初期化します。データ受信のためにコールバック関数を指定します。
   // begin()の内部で、RSSI値の自動通知(@SION)などが有効化されます。
@@ -105,7 +101,7 @@ void setup() {
   }
   Serial.println("MUモデムの初期化に成功しました。");
 
-  // 各種IDとチャンネルを設定します。
+  // 各種IDとチャンネル、送信出力を設定します。
   // saveValueをtrueにすると、設定がモデムの不揮発性メモリに保存されます。
   // このサンプルでは、電源を入れ直すと元に戻るようにfalseに設定しています。
 
@@ -137,9 +133,8 @@ void setup() {
   }
   Serial.print("自機IDを "); Serial.print(equipID, HEX); Serial.println(" に設定しました。");
 
-  // 送信出力を設定します (10mWもしくは1mW)
+  // 送信出力を設定 (10mWもしくは1mW)
   // 0x01: 1mW, 0x10: 10mW
-  // 第2引数のsaveValueをfalseにすると、設定はモデムのRAMにのみ保存され、電源オフでリセットされます。
   // 小エリアで通信する場合は 1mW に設定すると、多くのシステムで電波資源を有効に共有することができます。
   err = modem.SetPower(0x10, false);
   if (err == MU_Modem_Error::Ok) {
