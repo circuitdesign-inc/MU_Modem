@@ -9,6 +9,9 @@
 このライブラリは、Arduinoでサーキットデザイン社製MUシリーズ無線モデム（例：MU-3-429及びMU-3-1216、MU-4-429）を制御するためのインターフェースを提供します。
 シリアルコマンドインターフェースを介して、データの送受信やモデムの設定を簡単に行うことができます。
 
+API等は以下ドキュメントをご参照ください。<br>
+https://circuitdesign-inc.github.io/MU_Modem/
+
 ## 対応ハードウェア
 
 *   Circuit Design MU-3-429
@@ -146,10 +149,6 @@ build_flags = -D ENABLE_MU_MODEM_DEBUG
 // デバッグの出力先を設定
 modem.setDebugStream(&Serial);
 ```
-
-## API
-
-詳細なAPIリファレンスについては、ヘッダーファイル `MU_Modem.h` 内のコメントを参照してください。
 
 ## License
 
