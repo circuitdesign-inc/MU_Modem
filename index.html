@@ -75,7 +75,7 @@ var searchBox = new SearchBox("searchBox", "search/",'.html');
 </div>
 
 <div><div class="header">
-  <div class="headertitle"><div class="title">MU_Modem </div></div>
+  <div class="headertitle"><div class="title"><a class="el" href="classMU__Modem.html" title="Provides an interface to control the MU FSK modem.">MU_Modem</a> </div></div>
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><p><a class="anchor" id="md_README"></a> サーキットデザイン社製MUシリーズ無線モデムを制御するためのArduinoライブラリです。</p>
@@ -147,7 +147,7 @@ var searchBox = new SearchBox("searchBox", "search/",'.html');
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;MU_Modem.h&gt;</span></div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// MUモデムのインスタンスを作成</span></div>
-<div class="line">MU_Modem modem;</div>
+<div class="line"><a class="code hl_class" href="classMU__Modem.html">MU_Modem</a> modem;</div>
 <div class="line"> </div>
 <div class="line"><span class="comment">// データ受信時に呼び出されるコールバック関数</span></div>
 <div class="line"><span class="keywordtype">void</span> modemCallback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t value, <span class="keyword">const</span> uint8_t *pPayload, uint16_t len, <span class="keyword">const</span> uint8_t* pRouteInfo, uint8_t numRouteNodes)</div>
@@ -164,7 +164,7 @@ var searchBox = new SearchBox("searchBox", "search/",'.html');
 <div class="line"> </div>
 <div class="line"><span class="keywordtype">void</span> setup() {</div>
 <div class="line">  <span class="comment">// PCとの通信用シリアルを開始</span></div>
-<div class="line">  Serial.begin(115200);</div>
+<div class="line">  Serial.<a class="code hl_function" href="classMU__Modem.html#a69f83020f2ccc23ce5601003b34269e8">begin</a>(115200);</div>
 <div class="line">  <span class="keywordflow">while</span> (!Serial);</div>
 <div class="line">  Serial.println(<span class="stringliteral">&quot;MU Modem Basic Example&quot;</span>);</div>
 <div class="line"> </div>
@@ -176,7 +176,7 @@ var searchBox = new SearchBox("searchBox", "search/",'.html');
 <div class="line">  <span class="comment">// 第1引数: 通信に使うStreamオブジェクト</span></div>
 <div class="line">  <span class="comment">// 第2引数: 使用するモデムの周波数モデル(MHz_429:MU-3-429とMU-4-429, MHz_1216:MU-3-1216に対応)</span></div>
 <div class="line">  <span class="comment">// 第3引数: データ受信時に呼び出すコールバック関数 (受信しない場合はnullptr)</span></div>
-<div class="line">  MU_Modem_Error err = modem.begin(Serial1, MU_Modem_FrequencyModel::MHz_429, modemCallback);</div>
+<div class="line">  MU_Modem_Error err = modem.<a class="code hl_function" href="classMU__Modem.html#a69f83020f2ccc23ce5601003b34269e8">begin</a>(Serial1, MU_Modem_FrequencyModel::MHz_429, modemCallback);</div>
 <div class="line"> </div>
 <div class="line">  <span class="keywordflow">if</span> (err != MU_Modem_Error::Ok) {</div>
 <div class="line">    Serial.println(<span class="stringliteral">&quot;MUモデムの初期化に失敗しました。&quot;</span>);</div>
@@ -185,14 +185,14 @@ var searchBox = new SearchBox("searchBox", "search/",'.html');
 <div class="line">  Serial.println(<span class="stringliteral">&quot;MUモデムの初期化が完了しました。&quot;</span>);</div>
 <div class="line"> </div>
 <div class="line">  <span class="comment">// モデムの各種設定 (任意)</span></div>
-<div class="line">  modem.SetChannel(0x07, <span class="keyword">false</span>);      <span class="comment">// チャンネルを7に設定</span></div>
-<div class="line">  modem.SetEquipmentID(0x01, <span class="keyword">false</span>);  <span class="comment">// 自局IDを1に設定</span></div>
+<div class="line">  modem.<a class="code hl_function" href="classMU__Modem.html#a6b7eba13080e003515573911fcf5dc72">SetChannel</a>(0x07, <span class="keyword">false</span>);      <span class="comment">// チャンネルを7に設定</span></div>
+<div class="line">  modem.<a class="code hl_function" href="classMU__Modem.html#ac0a1f04cce8a4ec97c5630f799197829">SetEquipmentID</a>(0x01, <span class="keyword">false</span>);  <span class="comment">// 自局IDを1に設定</span></div>
 <div class="line">}</div>
 <div class="line"> </div>
 <div class="line"><span class="keywordtype">void</span> loop() {</div>
 <div class="line">  <span class="comment">// この関数をループ内で常に呼び出す必要があります。</span></div>
 <div class="line">  <span class="comment">// 受信データの解析やコールバックの呼び出しを行います。</span></div>
-<div class="line">  modem.Work();</div>
+<div class="line">  modem.<a class="code hl_function" href="classMU__Modem.html#a093205206ee7f99b2cb8a7acb082e6f5">Work</a>();</div>
 <div class="line"> </div>
 <div class="line">  <span class="comment">// 5秒ごとにメッセージを送信する例</span></div>
 <div class="line">  <span class="keyword">static</span> uint32_t lastSendTime = 0;</div>
@@ -203,7 +203,7 @@ var searchBox = new SearchBox("searchBox", "search/",'.html');
 <div class="line">    Serial.printf(<span class="stringliteral">&quot;&#39;%s&#39; を送信します...\n&quot;</span>, message);</div>
 <div class="line">    </div>
 <div class="line">    <span class="comment">// データ送信 (目的局IDは事前にSetDestinationID()で設定)</span></div>
-<div class="line">    MU_Modem_Error tx_err = modem.TransmitData((<span class="keyword">const</span> uint8_t*)message, strlen(message));</div>
+<div class="line">    MU_Modem_Error tx_err = modem.<a class="code hl_function" href="classMU__Modem.html#a4073269482792c7909eb3f063e92328e">TransmitData</a>((<span class="keyword">const</span> uint8_t*)message, strlen(message));</div>
 <div class="line">    </div>
 <div class="line">    <span class="keywordflow">if</span> (tx_err == MU_Modem_Error::Ok) {</div>
 <div class="line">      Serial.println(<span class="stringliteral">&quot;送信に成功しました。&quot;</span>);</div>
@@ -212,12 +212,19 @@ var searchBox = new SearchBox("searchBox", "search/",'.html');
 <div class="line">    }</div>
 <div class="line">  }</div>
 <div class="line">}</div>
+<div class="ttc" id="aclassMU__Modem_html"><div class="ttname"><a href="classMU__Modem.html">MU_Modem</a></div><div class="ttdoc">Provides an interface to control the MU FSK modem.</div><div class="ttdef"><b>Definition:</b> MU_Modem.h:175</div></div>
+<div class="ttc" id="aclassMU__Modem_html_a093205206ee7f99b2cb8a7acb082e6f5"><div class="ttname"><a href="classMU__Modem.html#a093205206ee7f99b2cb8a7acb082e6f5">MU_Modem::Work</a></div><div class="ttdeci">void Work()</div><div class="ttdoc">Main work/polling function to be called repeatedly in the main loop. This function processes incoming...</div><div class="ttdef"><b>Definition:</b> MU_Modem.cpp:1561</div></div>
+<div class="ttc" id="aclassMU__Modem_html_a4073269482792c7909eb3f063e92328e"><div class="ttname"><a href="classMU__Modem.html#a4073269482792c7909eb3f063e92328e">MU_Modem::TransmitData</a></div><div class="ttdeci">MU_Modem_Error TransmitData(const uint8_t *pMsg, uint8_t len, bool useRouteRegister=false)</div><div class="ttdoc">Transmits a data packet.</div><div class="ttdef"><b>Definition:</b> MU_Modem.cpp:443</div></div>
+<div class="ttc" id="aclassMU__Modem_html_a69f83020f2ccc23ce5601003b34269e8"><div class="ttname"><a href="classMU__Modem.html#a69f83020f2ccc23ce5601003b34269e8">MU_Modem::begin</a></div><div class="ttdeci">MU_Modem_Error begin(Stream &amp;pUart, MU_Modem_FrequencyModel frequencyModel, MU_Modem_AsyncCallback pCallback=nullptr)</div><div class="ttdoc">Initializes the modem driver.</div><div class="ttdef"><b>Definition:</b> MU_Modem.cpp:183</div></div>
+<div class="ttc" id="aclassMU__Modem_html_a6b7eba13080e003515573911fcf5dc72"><div class="ttname"><a href="classMU__Modem.html#a6b7eba13080e003515573911fcf5dc72">MU_Modem::SetChannel</a></div><div class="ttdeci">MU_Modem_Error SetChannel(uint8_t channel, bool saveValue)</div><div class="ttdoc">Sets the frequency channel.</div><div class="ttdef"><b>Definition:</b> MU_Modem.cpp:822</div></div>
+<div class="ttc" id="aclassMU__Modem_html_ac0a1f04cce8a4ec97c5630f799197829"><div class="ttname"><a href="classMU__Modem.html#ac0a1f04cce8a4ec97c5630f799197829">MU_Modem::SetEquipmentID</a></div><div class="ttdeci">MU_Modem_Error SetEquipmentID(uint8_t ei, bool saveValue)</div><div class="ttdoc">Sets the Equipment ID.</div><div class="ttdef"><b>Definition:</b> MU_Modem.cpp:1044</div></div>
 </div><!-- fragment --><h1><a class="anchor" id="autotoc_md9"></a>
 デバッグ</h1>
 <p>platformioを使用している場合、ライブラリのデバッグ出力を有効にすることができます。</p>
 <p>デバッグ機能を有効にするには、platformio.iniに以下のビルドフラグ追加してください: </p><div class="fragment"><div class="line">build_flags = -D ENABLE_MU_MODEM_DEBUG</div>
 </div><!-- fragment --><p>また、デバッグの出力先を以下の関数で指定する必要があります。 </p><div class="fragment"><div class="line"><span class="comment">// デバッグの出力先を設定</span></div>
-<div class="line">modem.setDebugStream(&amp;Serial);</div>
+<div class="line">modem.<a class="code hl_function" href="classMU__Modem.html#a3cff2794422bf19c4437ee56170fb9cb">setDebugStream</a>(&amp;Serial);</div>
+<div class="ttc" id="aclassMU__Modem_html_a3cff2794422bf19c4437ee56170fb9cb"><div class="ttname"><a href="classMU__Modem.html#a3cff2794422bf19c4437ee56170fb9cb">MU_Modem::setDebugStream</a></div><div class="ttdeci">void setDebugStream(Stream *debugStream)</div><div class="ttdoc">Sets the stream for debug output.</div><div class="ttdef"><b>Definition:</b> MU_Modem.cpp:225</div></div>
 </div><!-- fragment --><h1><a class="anchor" id="autotoc_md10"></a>
 License</h1>
 <p>このライブラリはMITライセンスの下でリリースされています。 </p>
