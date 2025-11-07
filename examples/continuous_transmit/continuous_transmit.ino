@@ -29,9 +29,10 @@
  * 2. loop()内で modem.Work() を呼び出し続けます。
  * 3. データを受信するとコールバック関数が呼び出され、受信内容がシリアルモニタに表示されます。
  *
- * 連続送信条件について:
- * *DT応答を確認してから「5ms + (2.08ms * データ数)」以内に次のデータを送れば連続送信モードになります。
- * TransmitDataFireAndForget()は*DT応答を確認後すぐに制御を返すため、この関数を連続で呼び出すことで、連続送信状態を保持できます。
+ * 連続送信条件について(429MHz帯モデムの場合):
+ * *DT応答を確認してから「5ms + (2.08ms * データ数)」以内に次のデータを送れば連続送信モードになります。(429MHz:2.08ms,1216MHz:1.04ms)
+ * ここで、TransmitData関数を使用すると、キャリアセンスレスポンスを確認するために50msの待機を行うため、特定のデータ数を下回ると連続送信を維持できません。
+ * 一方、TransmitDataFireAndForget()は*DT応答を確認後、キャリアセンスレスポンスを待たずにすぐに制御を返すため、この関数を連続で呼び出すことで、連続送信状態を保持できます。
  * 詳細はデータシートをご確認ください。
  * なお、データバッファのオーバーフローを防止するためにフロー制御端子(RTS,CTS)の接続を推奨します。
  *
@@ -122,7 +123,7 @@ void setup() {
   if (err == MU_Modem_Error::Ok)
   {
     // モデム側のボーレート変更が成功したら、ホスト側(Arduino)のボーレートも変更する
-    Serial1.updateBaudRate(newBaudRate);
+    Serial1.begin(newBaudRate);
     delay(200); // ボーレート変更後の安定化のために少し待機
     Serial.println("ボーレートの変更に成功しました。");
   }
@@ -176,7 +177,7 @@ void loop() {
       for (int i = 0; i < NUM_PACKETS_TO_SEND; i++)
       {
         char message[32];
-        snprintf(message, sizeof(message), "Continuous Packet #%d", i + 1);
+        snprintf(message, sizeof(message), "Cont Pkt #%d", i + 1);
 
         // `TransmitDataFireAndForget` を使用して、*DT応答のみを待ってすぐに次の処理へ
         MU_Modem_Error tx_err = modem.TransmitDataFireAndForget((const uint8_t*)message, strlen(message));
