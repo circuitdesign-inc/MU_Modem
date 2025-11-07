@@ -2488,7 +2488,6 @@ MU_Modem_Error MU_Modem::m_HandleMessage_SN(uint32_t *pSerialNumber)
         return MU_Modem_Error::Fail;
     }
 
-    uint32_t serialNumber = 0;
     const uint8_t *startPtr = &m_rxMessage[prefixLen]; // Point after "*SN="
     uint8_t parseLen = m_rxIdx - prefixLen; // Length of the remaining part
 
