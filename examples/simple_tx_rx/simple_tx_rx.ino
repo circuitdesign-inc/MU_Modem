@@ -7,14 +7,14 @@
  *
  * @details
  * このサンプルプログラムは、MU-Modemライブラリを使用して、モデムの初期化、
- * 各種IDとチャンネルの設定、そして定期的なデータ送信と非同期のデータ受信を
- * 行う基本的な方法を示します。
+ * 各種IDとチャンネルの設定、そして定期的なデータ送信とポーリングによるデータ受信を行う基本的な方法を示します。
  *
  * 動作:
  * 1. `setup()` 関数でモデムを初期化し、チャンネル、グループID、目的局ID、自機IDを設定します。
  * 2. `loop()` 関数内で、5秒ごとに "Hello MU!" というメッセージを送信します。
- * 3. 同時に、`modem.Work()` を通じてモデムがデータを受信したかを常に確認し、
- *    受信した場合はコールバック関数 `mu_callback` が呼び出され、その内容がシリアルモニタに表示されます。
+ * 3. 同時に、`modem.Work()` を呼び出した後、`modem.HasPacket()` で受信データの有無を確認します。
+ * データがある場合は `modem.GetPacket()` で内容を取得しシリアルモニタに表示します。
+ * (処理後、`modem.DeletePacket()` でバッファを解放します)
  *
  * このサンプルを実行するには、Arduino互換ボードのSerial1に
  * MUモデムが接続されている必要があります。
@@ -22,37 +22,6 @@
 #include <MU_Modem.h>
 
 MU_Modem modem;
-
-/**
- * @brief モデムからの非同期イベントを処理するコールバック関数
- *
- * データ受信時や非同期コマンドの応答受信時にライブラリから自動的に呼び出されます。
- * @param error エラーコード
- * @param responseType 応答の種類
- * @param value 応答に含まれる数値（RSSIなど）
- * @param pPayload 受信したデータのペイロードへのポインタ
- * @param len ペイロードの長さ (バイト単位)
- * @param pRouteInfo 受信パケットに含まれるルート情報へのポインタ
- * @param numRouteNodes ルート情報のノード数
- */
-void mu_callback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t value, const uint8_t *pPayload, uint16_t len, const uint8_t* pRouteInfo, uint8_t numRouteNodes)
-{
-  // データ受信応答の場合のみ処理
-  if (responseType == MU_Modem_Response::DataReceived)
-  {
-    Serial.print("パケット受信 (");
-    Serial.print(len);
-    Serial.print(" バイト, RSSI: ");
-    Serial.print(value); // RSSI値
-    Serial.print(" dBm): ");
-
-    // 受信データを文字列として表示
-    for (int i = 0; i < len; i++) {
-      Serial.write(pPayload[i]);
-    }
-    Serial.println();
-  }
-}
 
 void setup() {
   Serial.begin(115200);
@@ -64,9 +33,9 @@ void setup() {
   Serial1.begin(MU_DEFAULT_BAUDRATE);
 
   // モデムを初期化します。
-  // 第2引数で周波数モデルを、第3引数でコールバック関数を指定します。
+  // 第2引数で周波数モデルを指定します。
   // MU_Modem_FrequencyModel::MHz_429 または MU_Modem_FrequencyModel::MHz_1216
-  MU_Modem_Error err = modem.begin(Serial1, MU_Modem_FrequencyModel::MHz_429, mu_callback);
+  MU_Modem_Error err = modem.begin(Serial1, MU_Modem_FrequencyModel::MHz_429);
   if (err != MU_Modem_Error::Ok)
   {
     Serial.println("MUモデムの初期化に失敗しました。接続を確認してください。");
@@ -108,10 +77,34 @@ void setup() {
 }
 
 void loop() {
-  // モデムの内部処理（受信データの解析、コールバック呼び出しなど）のために、Work()を常に呼び出します。
+  // モデムの内部処理（受信データの解析など）のために、Work()を常に呼び出します。
   modem.Work();
 
-  // 例: 5秒ごとに "Hello MU!" を送信
+  // --- 受信処理 ---
+  if (modem.HasPacket())
+  {
+    const uint8_t *pPayload;
+    uint8_t len;
+
+    // データの実体を取得
+    if (modem.GetPacket(&pPayload, &len) == MU_Modem_Error::Ok)
+    {
+      Serial.print("パケット受信 (");
+      Serial.print(len);
+      Serial.print(" バイト): ");
+      
+      // 受信データを文字列として表示
+      for (int i = 0; i < len; i++) {
+        Serial.write(pPayload[i]);
+      }
+      Serial.println();
+    }
+
+    // 重要: データ処理が終わったら必ずパケットを破棄して、次の受信ができるようにしてください。
+    modem.DeletePacket();
+  }
+
+  // --- 送信処理 (例: 5秒ごとに "Hello MU!" を送信) ---
   static uint32_t lastSendTime = 0;
   if (millis() - lastSendTime > 5000) {
     lastSendTime = millis();
