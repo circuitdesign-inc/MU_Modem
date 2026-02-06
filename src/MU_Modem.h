@@ -18,6 +18,7 @@
 
 #pragma once
 #include <Arduino.h>
+#include "common/SerialModemBase.h"
 
 /**
  * @brief Default baud rate for the MU modem.
@@ -41,26 +42,6 @@ static constexpr uint8_t MU_MAX_ROUTE_NODES_IN_DR = 12; //!< Max route nodes in 
 // --- Debug Configuration ---
 // Uncomment the following line to enable debug output
 // #define ENABLE_MU_MODEM_DEBUG
-
-#ifdef ENABLE_MU_MODEM_DEBUG
-#define MU_DEBUG_PRINT(...) \
-    if (m_pDebugStream)     \
-    m_pDebugStream->print(__VA_ARGS__)
-#define MU_DEBUG_PRINTLN(...) \
-    if (m_pDebugStream)       \
-    m_pDebugStream->println(__VA_ARGS__)
-#define MU_DEBUG_PRINTF(...) \
-    if (m_pDebugStream)      \
-    m_pDebugStream->printf(__VA_ARGS__)
-#define MU_DEBUG_WRITE(...) \
-    if (m_pDebugStream)     \
-    m_pDebugStream->write(__VA_ARGS__)
-#else
-#define MU_DEBUG_PRINT(...)
-#define MU_DEBUG_PRINTLN(...)
-#define MU_DEBUG_PRINTF(...)
-#define MU_DEBUG_WRITE(...)
-#endif
 
 /**
  * @enum MU_Modem_Response
@@ -89,15 +70,7 @@ enum class MU_Modem_Response
  * @enum MU_Modem_Error
  * @brief Defines API level error codes.
  */
-enum class MU_Modem_Error
-{
-    Ok,            //!< No error.
-    Busy,          //!< The modem is busy processing a previous command.
-    InvalidArg,    //!< An invalid argument was provided to a command.
-    FailLbt,       //!< Transmission failed due to Listen Before Talk (LBT) detecting a busy channel.
-    Fail,          //!< A general failure occurred.
-    BufferTooSmall //!< Provided response buffer is too small.
-};
+using MU_Modem_Error = ModemError;
 
 /**
  * @enum MU_Modem_FrequencyModel
@@ -107,19 +80,6 @@ enum class MU_Modem_FrequencyModel
 {
     MHz_429, //!< 429 MHz model
     MHz_1216 //!< 1216 MHz model
-};
-
-/**
- * @enum MU_Modem_CmdState (Internal)
- * @brief Represents the high-level state of the command parser.
- */
-enum class MU_Modem_CmdState
-{
-    Parsing = 0,         //!< Still parsing, waiting for more data.
-    Garbage,             //!< Garbage data received.
-    Overflow,            //!< Receive buffer overflowed.
-    FinishedCmdResponse, //!< A complete command response has been received.
-    FinishedDrResponse,  //!< A complete data reception (*DR/*DS) message has been received.
 };
 
 /**
@@ -160,7 +120,7 @@ typedef void (*MU_Modem_AsyncCallback)(MU_Modem_Error error, MU_Modem_Response r
  * @class MU_Modem
  * @brief Provides an interface to control the MU FSK modem.
  */
-class MU_Modem
+class MU_Modem : public SerialModemBase
 {
 public: // methods
     // --- Initialization & Lifecycle ---
@@ -197,7 +157,7 @@ public: // methods
      * @brief Sets the stream for debug output.
      * @param debugStream Pointer to the Stream object (e.g., &Serial). Set to nullptr to disable debug output.
      */
-    void setDebugStream(Stream *debugStream);
+    // void setDebugStream(Stream *debugStream); // Inherited from SerialModemBase
 
     // --- Data Transmission ---
 
@@ -487,30 +447,19 @@ public: // methods
      */
     MU_Modem_Error SendRawCommandAsync(const char *command, uint32_t timeoutMs = 500);
 
-private: // methods
-    // Timeout helpers
-    bool m_IsTimeout();
-    void m_StartTimeout(uint32_t ms = 500);
-    void m_ClearTimeout();
+protected:
+    // --- SerialModemBase Overrides ---
+    virtual ModemParseResult parse() override;
+    virtual void onRxDataReceived() override;
+    virtual const char *getLogPrefix() const override { return "[MU Modem] "; }
 
-    // UART helpers
-    void m_WriteString(const char *pString, bool printPrefix = true);
-    void m_WriteData(const uint8_t *pData, uint8_t len);
-    uint8_t m_ReadByte();
-    void m_UnreadByte(uint8_t unreadByte);
-    void m_ClearUnreadByte();
-    uint32_t m_Read(uint8_t *pDst, uint32_t count);
-
+private: // meth
     // Parser helpers
     void m_ResetParser();
-    void m_FlushGarbage();
-    void m_ClearOneLine();
-    MU_Modem_CmdState m_Parse();
 
     // Parsing specific responses
     MU_Modem_Error m_HandleMessage_RT(uint8_t *pDestBuffer, size_t bufferSize, uint8_t *pNumNodes);
     MU_Modem_Error m_ProcessSaveResponse(bool saveValue);
-    MU_Modem_Error m_WaitCmdResponse(uint32_t ms = 500);
     MU_Modem_Error m_DispatchCmdResponseAsync();
 
     MU_Modem_Error m_HandleMessage_WR();
@@ -521,25 +470,16 @@ private: // methods
     MU_Modem_Error m_SendCmd(const char *cmd);
     MU_Modem_Error m_SetByteValue(const char *cmdPrefix, uint8_t value, bool saveValue, const char *respPrefix, size_t respLen);
     MU_Modem_Error m_GetByteValue(const char *cmdPrefix, uint8_t *pValue, const char *respPrefix, size_t respLen);
-    MU_Modem_Error m_GetBoolValue(const char *cmdPrefix, bool *pValue, const char *respPrefix);
-    MU_Modem_Error m_SetBoolValue(bool enabled, bool saveValue, const char *cmdOn, const char *cmdOff, const char *respPrefix);
 
-    MU_Modem_Error m_ParseResponseHex(uint32_t *pValue, const char *prefix, size_t prefixLen, uint8_t hexDigits);
     MU_Modem_Error m_HandleMessageHexByte(uint8_t *pValue, uint32_t responseLen, const char *responsePrefix);
     MU_Modem_Error m_HandleMessageHexWord(uint16_t *pValue, uint32_t responseLen, const char *responsePrefix);
 
 private:                                      // data
-    Stream *m_pUart;                          //!< Pointer to the serial stream.
-    Stream *m_pDebugStream = nullptr;         //!< Pointer to the debug stream.
-    bool m_debugRxNewLine = true;             //!< Debug format flag.
     MU_Modem_AsyncCallback m_pCallback;       //!< User callback.
     MU_Modem_FrequencyModel m_frequencyModel; //!< Frequency model.
 
     // Parser State
     MU_Modem_ParserState m_parserState; //!< Internal parser state.
-    int16_t m_oneByteBuf;               //!< Unread buffer.
-    uint16_t m_rxIdx;                   //!< Receive buffer index.
-    uint8_t m_rxMessage[128];           //!< Receive buffer.
 
     // Received Packet Data
     bool m_drMessagePresent;                         //!< Packet ready flag.
@@ -551,7 +491,4 @@ private:                                      // data
 
     // Async State
     MU_Modem_Response m_asyncExpectedResponse; //!< Expected async response.
-    bool bTimeout = true;                      //!< Timeout flag.
-    uint32_t startTime;                        //!< Timeout start time.
-    uint32_t timeOut;                          //!< Timeout duration.
 };

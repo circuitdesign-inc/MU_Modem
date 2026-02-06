@@ -20,10 +20,6 @@
 
 // --- MU Modem Command and Response String Constants ---
 
-// @W (Write to NVM)
-static constexpr char MU_WRITE_VALUE_RESPONSE_PREFIX[] = "*WR=PS";
-static constexpr size_t MU_WRITE_VALUE_RESPONSE_LEN = 6;
-
 // @DT (Data Transmission)
 static constexpr char MU_TRANSMISSION_PREFIX_STRING[] = "@DT";
 static constexpr char MU_TRANSMISSION_RESPONSE_PREFIX[] = "*DT=";
@@ -85,6 +81,7 @@ static constexpr size_t MU_GET_RSSI_ALL_CHANNELS_RESPONSE_LEN_1216 = 4 + (19 * 2
 static constexpr char MU_CMD_ROUTE[] = "@RT";
 static constexpr char MU_SET_ROUTE_RESPONSE_PREFIX[] = "*RT=";
 static constexpr size_t MU_SET_ROUTE_RESPONSE_LEN = 6;
+static constexpr char MU_ROUTE_NA_RESPONSE[] = "*RT=NA";
 static constexpr char MU_ROUTE_NA_STRING[] = "NA";
 static constexpr size_t MU_MAX_ROUTE_STR_LEN = 33; // 11 nodes * 3 chars
 
@@ -98,9 +95,8 @@ static constexpr char MU_CMD_SERIAL_NUMBER[] = "@SN";
 static constexpr char MU_GET_SERIAL_NUMBER_RESPONSE_PREFIX[] = "*SN=";
 static constexpr size_t MU_GET_SERIAL_NUMBER_RESPONSE_MIN_LEN = 12;
 
-// @SION (Enable RSSI reporting with *DR)
-static constexpr char MU_CMD_SET_ADD_RSSI_ON[] = "@SION";
-static constexpr char MU_CMD_SET_ADD_RSSI_OFF[] = "@SIOF";
+// @SI (Enable RSSI reporting with *DR)
+static constexpr char MU_CMD_ADD_RSSI[] = "@SI";
 static constexpr char MU_SET_ADD_RSSI_RESPONSE_PREFIX[] = "*SI=";
 
 // @SR (Software Reset)
@@ -108,19 +104,11 @@ static constexpr char MU_CMD_SOFT_RESET[] = "@SR";
 static constexpr char MU_SET_SOFT_RESET_RESPONSE_PREFIX[] = "*SR=";
 static constexpr size_t MU_SET_SOFT_RESET_RESPONSE_LEN = 6;
 
-// Common ON/OFF
-static constexpr char MU_VAL_ON[] = "ON";
-static constexpr char MU_VAL_OFF[] = "OF";
-
 // @RR (Enable usage of route information from route register)
-static constexpr char MU_CMD_SET_USR_ROUTE_ON[] = "@RRON";
-static constexpr char MU_CMD_SET_USR_ROUTE_OFF[] = "@RROF";
 static constexpr char MU_CMD_USR_ROUTE[] = "@RR";
 static constexpr char MU_GET_USR_ROUTE_RESPONSE_PREFIX[] = "*RR=";
 
 // @RI (Route Information Add Mode)
-static constexpr char MU_CMD_SET_ROUTE_INFO_ADD_MODE_ON[] = "@RION";
-static constexpr char MU_CMD_SET_ROUTE_INFO_ADD_MODE_OFF[] = "@RIOF";
 static constexpr char MU_CMD_ROUTE_INFO_ADD[] = "@RI";
 static constexpr char MU_GET_ROUTE_INFO_ADD_MODE_RESPONSE_PREFIX[] = "*RI=";
 
@@ -136,51 +124,25 @@ uint16_t static_strlen(const char (&cstr)[N])
     return 0xFFFF;
 }
 
-static bool s_ParseHex(const uint8_t *pData, uint8_t len, uint32_t *pResult)
-{
-    if (!pData || !pResult)
-        return false;
-    *pResult = 0;
-
-    for (uint8_t i = 0; i < len; ++i)
-    {
-        *pResult <<= 4;
-        uint8_t c = pData[i];
-        if (c >= '0' && c <= '9')
-            *pResult |= (c - '0');
-        else if (c >= 'a' && c <= 'f')
-            *pResult |= (c - 'a' + 10);
-        else if (c >= 'A' && c <= 'F')
-            *pResult |= (c - 'A' + 10);
-        else
-        {
-            *pResult = 0;
-            return false;
-        }
-    }
-    return true;
-}
-
 MU_Modem_Error MU_Modem::begin(Stream &pUart, MU_Modem_FrequencyModel frequencyModel, MU_Modem_AsyncCallback pCallback)
 {
-    m_pUart = &pUart;
+    initSerial(pUart);
     m_frequencyModel = frequencyModel;
     m_pCallback = pCallback;
     m_asyncExpectedResponse = MU_Modem_Response::Idle;
-    m_rxIdx = 0;
     m_parserState = MU_Modem_ParserState::Start;
     m_drMessagePresent = false;
     m_drMessageLen = 0;
     m_lastRxRSSI = 0;
     m_ResetParser();
 
-    MU_DEBUG_PRINTLN("[MU_Modem] begin: Resetting modem...");
+    SM_DEBUG_PRINTLN("begin: Resetting modem...");
 
     // Perform software reset
     MU_Modem_Error err = SoftReset();
     if (err != MU_Modem_Error::Ok)
     {
-        MU_DEBUG_PRINTF("[MU_Modem] begin: SoftReset failed! err=%d\n", (int)err);
+        SM_DEBUG_PRINTF("begin: SoftReset failed! err=%d\n", (int)err);
         return err;
     }
 
@@ -190,57 +152,54 @@ MU_Modem_Error MU_Modem::begin(Stream &pUart, MU_Modem_FrequencyModel frequencyM
     err = SetAddRssiValue();
     if (err != MU_Modem_Error::Ok)
     {
-        MU_DEBUG_PRINTF("[MU_Modem] begin: SetAddRssiValue failed! err=%d\n", (int)err);
+        SM_DEBUG_PRINTF("begin: SetAddRssiValue failed! err=%d\n", (int)err);
         return err;
     }
 
-    MU_DEBUG_PRINTLN("[MU_Modem] begin: Initialization successful.");
+    SM_DEBUG_PRINTLN("begin: Initialization successful.");
     return MU_Modem_Error::Ok;
-}
-
-void MU_Modem::setDebugStream(Stream *debugStream)
-{
-    m_pDebugStream = debugStream;
 }
 
 MU_Modem_Error MU_Modem::SetAddRssiValue()
 {
-    return m_SetBoolValue(true, false, MU_CMD_SET_ADD_RSSI_ON, MU_CMD_SET_ADD_RSSI_OFF, MU_SET_ADD_RSSI_RESPONSE_PREFIX);
+    return setBoolValue(MU_CMD_ADD_RSSI, true, false, MU_SET_ADD_RSSI_RESPONSE_PREFIX);
 }
 
 MU_Modem_Error MU_Modem::SetAutoReplyRoute(bool enabled, bool saveValue)
 {
-    return m_SetBoolValue(enabled, saveValue, MU_CMD_SET_USR_ROUTE_ON, MU_CMD_SET_USR_ROUTE_OFF, MU_GET_USR_ROUTE_RESPONSE_PREFIX);
+    return setBoolValue(MU_CMD_USR_ROUTE, enabled, saveValue, MU_GET_USR_ROUTE_RESPONSE_PREFIX);
 }
 
 MU_Modem_Error MU_Modem::SoftReset()
 {
+    if (m_asyncExpectedResponse != MU_Modem_Response::Idle)
+        return MU_Modem_Error::Busy;
+
     uint8_t status;
-    // m_GetByteValueを使用してコマンド送信とレスポンス(*SR=00)のパースを一括で行う
-    MU_Modem_Error rv = m_GetByteValue(MU_CMD_SOFT_RESET, &status, MU_SET_SOFT_RESET_RESPONSE_PREFIX, MU_SET_SOFT_RESET_RESPONSE_LEN);
+    // Use base getByteValue
+    ModemError err = getByteValue(MU_CMD_SOFT_RESET, &status, MU_SET_SOFT_RESET_RESPONSE_PREFIX, MU_SET_SOFT_RESET_RESPONSE_LEN);
+    MU_Modem_Error rv = err;
 
     if (rv == MU_Modem_Error::Ok && status != 0)
-    {
         rv = MU_Modem_Error::Fail;
-    }
-    // After Soft Reset, it's safer to clear buffers
+
     m_ResetParser();
     return rv;
 }
 
 MU_Modem_Error MU_Modem::GetAutoReplyRoute(bool *pEnabled)
 {
-    return m_GetBoolValue(MU_CMD_USR_ROUTE, pEnabled, MU_GET_USR_ROUTE_RESPONSE_PREFIX);
+    return getBoolValue(MU_CMD_USR_ROUTE, pEnabled, MU_GET_USR_ROUTE_RESPONSE_PREFIX);
 }
 
 MU_Modem_Error MU_Modem::SetRouteInfoAddMode(bool enabled, bool saveValue)
 {
-    return m_SetBoolValue(enabled, saveValue, MU_CMD_SET_ROUTE_INFO_ADD_MODE_ON, MU_CMD_SET_ROUTE_INFO_ADD_MODE_OFF, MU_GET_ROUTE_INFO_ADD_MODE_RESPONSE_PREFIX);
+    return setBoolValue(MU_CMD_ROUTE_INFO_ADD, enabled, saveValue, MU_GET_ROUTE_INFO_ADD_MODE_RESPONSE_PREFIX);
 }
 
 MU_Modem_Error MU_Modem::GetRouteInfoAddMode(bool *pEnabled)
 {
-    return m_GetBoolValue(MU_CMD_ROUTE_INFO_ADD, pEnabled, MU_GET_ROUTE_INFO_ADD_MODE_RESPONSE_PREFIX);
+    return getBoolValue(MU_CMD_ROUTE_INFO_ADD, pEnabled, MU_GET_ROUTE_INFO_ADD_MODE_RESPONSE_PREFIX);
 }
 
 MU_Modem_Error MU_Modem::TransmitData(const uint8_t *pMsg, uint8_t len, bool useRouteRegister)
@@ -252,20 +211,20 @@ MU_Modem_Error MU_Modem::TransmitData(const uint8_t *pMsg, uint8_t len, bool use
 
     std::array<char, 6> cmdHeader;
     snprintf(cmdHeader.data(), cmdHeader.size(), "%s%02X", MU_TRANSMISSION_PREFIX_STRING, len);
-    m_WriteString(cmdHeader.data(), true);
-    m_WriteData(pMsg, len);
+    writeString(cmdHeader.data(), true);
+    writeData(pMsg, len);
 
     if (useRouteRegister)
     {
-        m_WriteString(F("/R\r\n"), false);
+        writeString("/R\r\n", false);
     }
     else
     {
-        m_WriteString(F("\r\n"), false);
+        writeString("\r\n", false);
     }
 
     // Wait for *DT=XX
-    MU_Modem_Error rv = m_WaitCmdResponse();
+    MU_Modem_Error rv = waitForResponse();
     uint8_t transmissionResponse{};
     if (rv == MU_Modem_Error::Ok)
     {
@@ -280,10 +239,9 @@ MU_Modem_Error MU_Modem::TransmitData(const uint8_t *pMsg, uint8_t len, bool use
     // Check Carrier Sense result (*IR=XX or just delay)
     // For MU modem, if LBT fails, *IR=01 is returned quickly.
     // If successful, there is no specific confirmation message for LBT success before ACK (if requested).
-    // So we wait a short time for potential error response.
     if (rv == MU_Modem_Error::Ok)
     {
-        MU_Modem_Error lbtErr = m_WaitCmdResponse(50);
+        MU_Modem_Error lbtErr = waitForResponse(50);
         if (lbtErr == MU_Modem_Error::Ok)
         {
             // Received something, check if it is *IR=01 (No TX)
@@ -315,19 +273,19 @@ MU_Modem_Error MU_Modem::TransmitDataFireAndForget(const uint8_t *pMsg, uint8_t 
 
     std::array<char, 6> cmdHeader;
     snprintf(cmdHeader.data(), cmdHeader.size(), "%s%02X", MU_TRANSMISSION_PREFIX_STRING, len);
-    m_WriteString(cmdHeader.data(), true);
-    m_WriteData(pMsg, len);
+    writeString(cmdHeader.data(), true);
+    writeData(pMsg, len);
 
     if (useRouteRegister)
     {
-        m_WriteString(F("/R\r\n"), false);
+        writeString("/R\r\n", false);
     }
     else
     {
-        m_WriteString(F("\r\n"), false);
+        writeString("\r\n", false);
     }
 
-    MU_Modem_Error rv = m_WaitCmdResponse();
+    MU_Modem_Error rv = waitForResponse();
     uint8_t transmissionResponse{};
     if (rv == MU_Modem_Error::Ok)
     {
@@ -348,13 +306,13 @@ MU_Modem_Error MU_Modem::CheckCarrierSense()
     if (rv != MU_Modem_Error::Ok)
         return rv;
 
-    if (m_rxIdx == MU_CHANNEL_STATUS_RESPONSE_LEN)
+    if (_rxIndex == MU_CHANNEL_STATUS_RESPONSE_LEN)
     {
-        if (strncmp((const char *)m_rxMessage, MU_CHANNEL_STATUS_OK_RESPONSE, MU_CHANNEL_STATUS_RESPONSE_LEN) == 0)
+        if (strncmp((const char *)_rxBuffer, MU_CHANNEL_STATUS_OK_RESPONSE, MU_CHANNEL_STATUS_RESPONSE_LEN) == 0)
         {
             return MU_Modem_Error::Ok;
         }
-        else if (strncmp((const char *)m_rxMessage, MU_CHANNEL_STATUS_BUSY_RESPONSE, MU_CHANNEL_STATUS_RESPONSE_LEN) == 0)
+        else if (strncmp((const char *)_rxBuffer, MU_CHANNEL_STATUS_BUSY_RESPONSE, MU_CHANNEL_STATUS_RESPONSE_LEN) == 0)
         {
             return MU_Modem_Error::FailLbt;
         }
@@ -407,30 +365,30 @@ MU_Modem_Error MU_Modem::TransmitDataWithRoute(const uint8_t *pRouteInfo, uint8_
 
     std::array<char, 6> cmdHeader;
     snprintf(cmdHeader.data(), cmdHeader.size(), "%s%02X", MU_TRANSMISSION_PREFIX_STRING, len);
-    m_WriteString(cmdHeader.data(), true);
-    m_WriteData(pMsg, len);
+    writeString(cmdHeader.data(), true);
+    writeData(pMsg, len);
 
     // Write options: /A or /R or /B or /S
-    m_pUart->write('/');
+    _uart->write('/');
     if (outputToRelays)
-        m_pUart->write(requestAck ? 'B' : 'S');
+        _uart->write(requestAck ? 'B' : 'S');
     else
-        m_pUart->write(requestAck ? 'A' : 'R');
+        _uart->write(requestAck ? 'A' : 'R');
 
     // Write Route
-    m_pUart->write(' ');
+    _uart->write(' ');
     char nodeStr[3];
     for (uint8_t i = 0; i < numNodes; ++i)
     {
         sprintf(nodeStr, "%02X", pRouteInfo[i]);
-        m_WriteString(nodeStr, false);
+        writeString(nodeStr, false);
         if (i < numNodes - 1)
-            m_pUart->write(',');
+            _uart->write(',');
     }
-    m_WriteString("\r\n", false);
+    writeString("\r\n", false);
 
     // Wait for *DT=...
-    MU_Modem_Error rv = m_WaitCmdResponse();
+    MU_Modem_Error rv = waitForResponse();
     uint8_t transmissionResponse{};
     if (rv == MU_Modem_Error::Ok)
     {
@@ -445,7 +403,7 @@ MU_Modem_Error MU_Modem::TransmitDataWithRoute(const uint8_t *pRouteInfo, uint8_
     // Check LBT
     if (rv == MU_Modem_Error::Ok)
     {
-        MU_Modem_Error lbtErr = m_WaitCmdResponse(50);
+        MU_Modem_Error lbtErr = waitForResponse(50);
         if (lbtErr == MU_Modem_Error::Ok)
         {
             uint8_t irValue{};
@@ -466,10 +424,10 @@ MU_Modem_Error MU_Modem::TransmitDataWithRoute(const uint8_t *pRouteInfo, uint8_
     {
         // Simple blocking wait for ACK
         uint32_t ackTimeout = 100 + (numNodes * 60);
-        MU_Modem_Error ackErr = m_WaitCmdResponse(ackTimeout);
+        MU_Modem_Error ackErr = waitForResponse(ackTimeout);
         if (ackErr == MU_Modem_Error::Ok)
         {
-            if (m_rxIdx == 6 && strncmp("*DR=00", (char *)m_rxMessage, 6) == 0)
+            if (_rxIndex == 6 && strncmp("*DR=00", (char *)_rxBuffer, 6) == 0)
             {
                 rv = MU_Modem_Error::Ok;
             }
@@ -579,22 +537,22 @@ MU_Modem_Error MU_Modem::GetAllChannelsRssi(int16_t *pRssiBuffer, size_t bufferS
 
     char cmd[8];
     snprintf(cmd, sizeof(cmd), "%s\r\n", MU_CMD_RSSI_ALL);
-    m_WriteString(cmd);
+    writeString(cmd);
 
-    MU_Modem_Error rv = m_WaitCmdResponse(2500);
+    MU_Modem_Error rv = waitForResponse(2500);
     if (rv != MU_Modem_Error::Ok)
         return rv;
 
-    if (m_rxIdx != expectedLen || strncmp(MU_GET_RSSI_ALL_CHANNELS_RESPONSE_PREFIX, (char *)m_rxMessage, 4) != 0)
+    if (_rxIndex != expectedLen || strncmp(MU_GET_RSSI_ALL_CHANNELS_RESPONSE_PREFIX, (char *)_rxBuffer, 4) != 0)
     {
         return MU_Modem_Error::Fail;
     }
 
-    const uint8_t *pData = &m_rxMessage[4];
+    const uint8_t *pData = &_rxBuffer[4];
     for (size_t i = 0; i < expectedNum; ++i)
     {
         uint32_t val;
-        if (s_ParseHex(pData + (i * 2), 2, &val))
+        if (parseHex(pData + (i * 2), 2, &val))
         {
             pRssiBuffer[i] = -static_cast<int16_t>(val);
         }
@@ -614,9 +572,9 @@ MU_Modem_Error MU_Modem::GetRssiCurrentChannelAsync()
 
     char cmd[8];
     snprintf(cmd, sizeof(cmd), "%s\r\n", MU_CMD_RSSI_CURRENT);
-    m_WriteString(cmd);
+    writeString(cmd);
     m_asyncExpectedResponse = MU_Modem_Response::RssiCurrentChannel;
-    m_StartTimeout(1000);
+    startTimeout(1000);
     return MU_Modem_Error::Ok;
 }
 
@@ -627,9 +585,9 @@ MU_Modem_Error MU_Modem::GetAllChannelsRssiAsync()
 
     char cmd[8];
     snprintf(cmd, sizeof(cmd), "%s\r\n", MU_CMD_RSSI_ALL);
-    m_WriteString(cmd);
+    writeString(cmd);
     m_asyncExpectedResponse = MU_Modem_Response::RssiAllChannels;
-    m_StartTimeout(2500);
+    startTimeout(2500);
     return MU_Modem_Error::Ok;
 }
 
@@ -646,10 +604,10 @@ MU_Modem_Error MU_Modem::SetRouteInfo(const uint8_t *pRouteInfo, uint8_t numNode
     {
         offset += snprintf(cmdBuffer + offset, sizeof(cmdBuffer) - offset, "%02X%s", pRouteInfo[i], (i < numNodes - 1) ? "," : "");
     }
-    snprintf(cmdBuffer + offset, sizeof(cmdBuffer) - offset, "%s\r\n", saveValue ? "/W" : "");
-    m_WriteString(cmdBuffer);
+    snprintf(cmdBuffer + offset, sizeof(cmdBuffer) - offset, "%s\r\n", saveValue ? CD_CMD_WRITE_SUFFIX : "");
+    writeString(cmdBuffer);
 
-    MU_Modem_Error rv = m_WaitCmdResponse();
+    MU_Modem_Error rv = waitForResponse();
     if (rv == MU_Modem_Error::Ok && saveValue)
         rv = m_ProcessSaveResponse(true);
 
@@ -682,14 +640,14 @@ MU_Modem_Error MU_Modem::ClearRouteInfo(bool saveValue)
     if (m_asyncExpectedResponse != MU_Modem_Response::Idle)
         return MU_Modem_Error::Busy;
     char cmdBuffer[20];
-    snprintf(cmdBuffer, sizeof(cmdBuffer), "%s NA%s\r\n", MU_CMD_ROUTE, saveValue ? "/W" : "");
-    m_WriteString(cmdBuffer);
-    MU_Modem_Error rv = m_WaitCmdResponse();
+    snprintf(cmdBuffer, sizeof(cmdBuffer), "%s NA%s\r\n", MU_CMD_ROUTE, saveValue ? CD_CMD_WRITE_SUFFIX : "");
+    writeString(cmdBuffer);
+    MU_Modem_Error rv = waitForResponse();
     if (rv == MU_Modem_Error::Ok && saveValue)
         rv = m_ProcessSaveResponse(true);
     if (rv == MU_Modem_Error::Ok)
     {
-        if (m_rxIdx != 6 || strncmp("*RT=NA", (char *)m_rxMessage, 6) != 0)
+        if (_rxIndex != 6 || strncmp(MU_ROUTE_NA_RESPONSE, (char *)_rxBuffer, 6) != 0)
             rv = MU_Modem_Error::Fail;
     }
     return rv;
@@ -724,9 +682,9 @@ MU_Modem_Error MU_Modem::GetSerialNumberAsync()
         return MU_Modem_Error::Busy;
     char cmd[8];
     snprintf(cmd, sizeof(cmd), "%s\r\n", MU_CMD_SERIAL_NUMBER);
-    m_WriteString(cmd);
+    writeString(cmd);
     m_asyncExpectedResponse = MU_Modem_Response::SerialNumber;
-    m_StartTimeout(1000);
+    startTimeout(1000);
     return MU_Modem_Error::Ok;
 }
 
@@ -743,21 +701,21 @@ MU_Modem_Error MU_Modem::GetPacket(const uint8_t **ppData, uint8_t *len)
 
 void MU_Modem::Work()
 {
-    if (m_asyncExpectedResponse != MU_Modem_Response::Idle && m_IsTimeout())
+    if (m_asyncExpectedResponse != MU_Modem_Response::Idle && isTimeout())
     {
-        MU_DEBUG_PRINTF("[MU_Modem] Work: Async command (%d) timed out.\n", (int)m_asyncExpectedResponse);
+        SM_DEBUG_PRINTF("Work: Async command (%d) timed out.\n", (int)m_asyncExpectedResponse);
         if (m_pCallback)
             m_pCallback(MU_Modem_Error::Fail, m_asyncExpectedResponse, 0, nullptr, 0, nullptr, 0);
         m_asyncExpectedResponse = MU_Modem_Response::Idle;
         m_ResetParser();
     }
 
-    switch (m_Parse())
+    switch (parse())
     {
-    case MU_Modem_CmdState::Parsing:
+    case ModemParseResult::Parsing:
         break;
-    case MU_Modem_CmdState::Garbage:
-    case MU_Modem_CmdState::Overflow:
+    case ModemParseResult::Garbage:
+    case ModemParseResult::Overflow:
         if (m_asyncExpectedResponse != MU_Modem_Response::Idle)
         {
             if (m_pCallback)
@@ -765,270 +723,201 @@ void MU_Modem::Work()
             m_asyncExpectedResponse = MU_Modem_Response::Idle;
         }
         break;
-    case MU_Modem_CmdState::FinishedCmdResponse:
+    case ModemParseResult::FinishedCmdResponse:
         m_DispatchCmdResponseAsync();
         break;
-    case MU_Modem_CmdState::FinishedDrResponse:
+    case ModemParseResult::FinishedDrResponse:
         if (m_pCallback)
             m_pCallback(MU_Modem_Error::Ok, MU_Modem_Response::DataReceived, m_lastRxRSSI, m_drMessage, m_drMessageLen, m_drRouteInfo, m_drNumRouteNodes);
         break;
     }
 }
 
+void MU_Modem::onRxDataReceived()
+{
+    if (m_pCallback)
+        m_pCallback(MU_Modem_Error::Ok, MU_Modem_Response::DataReceived, m_lastRxRSSI, m_drMessage, m_drMessageLen, m_drRouteInfo, m_drNumRouteNodes);
+}
+
 // --- Helpers ---
-void MU_Modem::m_WriteString(const char *pString, bool printPrefix)
-{
-    size_t len = strlen(pString);
-    if (printPrefix)
-        MU_DEBUG_PRINT("[MU TX]: ");
-    MU_DEBUG_WRITE((const uint8_t *)pString, len);
-    m_pUart->write((const uint8_t *)pString, len);
-    m_debugRxNewLine = true;
-}
-
-void MU_Modem::m_WriteData(const uint8_t *pData, uint8_t len)
-{
-    MU_DEBUG_WRITE(pData, len);
-    m_pUart->write(pData, len);
-}
-
-uint8_t MU_Modem::m_ReadByte()
-{
-    int rcv_int = -1;
-    if (m_oneByteBuf != -1)
-    {
-        rcv_int = m_oneByteBuf;
-        m_oneByteBuf = -1;
-    }
-    else if (m_pUart->available())
-    {
-        rcv_int = m_pUart->read();
-    }
-
-    if (rcv_int != -1)
-    {
-        uint8_t rcv = (uint8_t)rcv_int;
-        if (m_debugRxNewLine)
-        {
-            MU_DEBUG_PRINT("[MU RX]: ");
-            m_debugRxNewLine = false;
-        }
-        if (rcv >= 32 && rcv <= 126)
-            MU_DEBUG_WRITE(rcv);
-        else if (rcv == '\r')
-            MU_DEBUG_PRINT("<CR>");
-        else if (rcv == '\n')
-        {
-            MU_DEBUG_PRINT("<LF>\n");
-            m_debugRxNewLine = true;
-        }
-        else
-            MU_DEBUG_PRINTF("<%02X>", rcv);
-        return rcv;
-    }
-    return 0;
-}
-
-void MU_Modem::m_UnreadByte(uint8_t unreadByte)
-{
-    m_oneByteBuf = unreadByte;
-}
-
-void MU_Modem::m_ClearUnreadByte()
-{
-    m_oneByteBuf = -1;
-}
 
 void MU_Modem::m_ResetParser()
 {
     m_parserState = MU_Modem_ParserState::Start;
-    m_ClearUnreadByte();
+    clearUnreadByte();
+    _rxIndex = 0;
 }
 
-void MU_Modem::m_FlushGarbage()
+ModemParseResult MU_Modem::parse()
 {
-    while (m_pUart->available())
-    {
-        if (m_ReadByte() == '*')
-        {
-            m_UnreadByte('*');
-            break;
-        }
-    }
-    m_ResetParser();
-}
-
-MU_Modem_CmdState MU_Modem::m_Parse()
-{
-    while (m_pUart->available() || m_oneByteBuf != -1)
+    while (_uart->available() || _oneByteBuf != -1)
     {
         switch (m_parserState)
         {
         case MU_Modem_ParserState::Start:
-            m_rxIdx = 0;
-            m_rxMessage[m_rxIdx] = m_ReadByte();
-            if (m_rxMessage[m_rxIdx] == '*')
+            _rxIndex = 0;
+            _rxBuffer[_rxIndex] = readByte();
+            if (_rxBuffer[_rxIndex] == '*')
             {
-                m_rxIdx++;
+                _rxIndex++;
                 m_parserState = MU_Modem_ParserState::ReadCmdFirstLetter;
             }
             else
             {
-                m_FlushGarbage();
-                return MU_Modem_CmdState::Garbage;
+                flushGarbage();
+                return ModemParseResult::Garbage;
             }
             break;
 
         case MU_Modem_ParserState::ReadCmdFirstLetter:
-            m_rxMessage[m_rxIdx] = m_ReadByte();
-            if (isupper(m_rxMessage[m_rxIdx]))
+            _rxBuffer[_rxIndex] = readByte();
+            if (isupper(_rxBuffer[_rxIndex]))
             {
-                m_rxIdx++;
+                _rxIndex++;
                 m_parserState = MU_Modem_ParserState::ReadCmdSecondLetter;
             }
             else
             {
-                if (m_rxMessage[m_rxIdx] == '*')
-                    m_UnreadByte('*');
-                m_FlushGarbage();
-                return MU_Modem_CmdState::Garbage;
+                if (_rxBuffer[_rxIndex] == '*')
+                    unreadByte('*');
+                flushGarbage();
+                return ModemParseResult::Garbage;
             }
             break;
 
         case MU_Modem_ParserState::ReadCmdSecondLetter:
-            m_rxMessage[m_rxIdx] = m_ReadByte();
-            if (isupper(m_rxMessage[m_rxIdx]))
+            _rxBuffer[_rxIndex] = readByte();
+            if (isupper(_rxBuffer[_rxIndex]))
             {
-                m_rxIdx++;
+                _rxIndex++;
                 m_parserState = MU_Modem_ParserState::ReadCmdParam;
             }
             else
             {
-                if (m_rxMessage[m_rxIdx] == '*')
-                    m_UnreadByte('*');
-                m_FlushGarbage();
-                return MU_Modem_CmdState::Garbage;
+                if (_rxBuffer[_rxIndex] == '*')
+                    unreadByte('*');
+                flushGarbage();
+                return ModemParseResult::Garbage;
             }
             break;
 
         case MU_Modem_ParserState::ReadCmdParam:
-            m_rxMessage[m_rxIdx] = m_ReadByte();
-            if (m_rxMessage[1] == 'D' && m_rxMessage[2] == 'R' && m_rxMessage[3] == '=')
+            _rxBuffer[_rxIndex] = readByte();
+            if (_rxBuffer[1] == 'D' && _rxBuffer[2] == 'R' && _rxBuffer[3] == '=')
             {
-                m_rxIdx++;
+                _rxIndex++;
                 m_parserState = MU_Modem_ParserState::RadioDrSize;
             }
-            else if (m_rxMessage[1] == 'D' && m_rxMessage[2] == 'S' && m_rxMessage[3] == '=')
+            else if (_rxBuffer[1] == 'D' && _rxBuffer[2] == 'S' && _rxBuffer[3] == '=')
             {
-                m_rxIdx++;
+                _rxIndex++;
                 m_parserState = MU_Modem_ParserState::RadioDsRssi;
             }
-            else if (m_rxMessage[3] == '=')
+            else if (_rxBuffer[3] == '=')
             {
-                m_rxIdx++;
+                _rxIndex++;
                 m_parserState = MU_Modem_ParserState::ReadCmdUntilCR;
             }
             else
             {
-                if (m_rxMessage[m_rxIdx] == '*')
-                    m_UnreadByte('*');
-                m_FlushGarbage();
-                return MU_Modem_CmdState::Garbage;
+                if (_rxBuffer[_rxIndex] == '*')
+                    unreadByte('*');
+                flushGarbage();
+                return ModemParseResult::Garbage;
             }
             break;
 
         case MU_Modem_ParserState::RadioDsRssi:
-            m_rxMessage[m_rxIdx++] = m_ReadByte();
-            if (m_rxIdx == 6)
+            _rxBuffer[_rxIndex++] = readByte();
+            if (_rxIndex == 6)
             {
                 uint32_t val;
-                if (s_ParseHex(&m_rxMessage[4], 2, &val))
+                if (parseHex(&_rxBuffer[4], 2, &val))
                 {
                     m_lastRxRSSI = -static_cast<int16_t>(val);
                     // Reset to parse size, simulating DR
-                    m_rxIdx = 4;
-                    m_rxMessage[1] = 'R'; // Pretend it is *DR
+                    _rxIndex = 4;
+                    _rxBuffer[1] = 'R'; // Pretend it is *DR
                     m_parserState = MU_Modem_ParserState::RadioDrSize;
                 }
                 else
                 {
-                    m_FlushGarbage();
-                    return MU_Modem_CmdState::Garbage;
+                    flushGarbage();
+                    return ModemParseResult::Garbage;
                 }
             }
             break;
 
         case MU_Modem_ParserState::RadioDrSize:
-            m_rxMessage[m_rxIdx++] = m_ReadByte();
-            if (m_rxIdx == 6)
+            _rxBuffer[_rxIndex++] = readByte();
+            if (_rxIndex == 6)
             {
                 uint32_t len;
-                if (s_ParseHex(&m_rxMessage[4], 2, &len))
+                if (parseHex(&_rxBuffer[4], 2, &len))
                 {
                     m_drMessageLen = (uint8_t)len;
-                    m_rxIdx = 0;
+                    _rxIndex = 0;
                     m_parserState = MU_Modem_ParserState::RadioDrPayload;
                 }
                 else
                 {
-                    m_FlushGarbage();
-                    return MU_Modem_CmdState::Garbage;
+                    flushGarbage();
+                    return ModemParseResult::Garbage;
                 }
             }
             break;
 
         case MU_Modem_ParserState::RadioDrPayload:
-            m_drMessage[m_rxIdx++] = m_ReadByte();
-            if (m_rxIdx == m_drMessageLen)
+            m_drMessage[_rxIndex++] = readByte();
+            if (_rxIndex == m_drMessageLen)
             {
                 m_parserState = MU_Modem_ParserState::ReadOptionUntilCR;
             }
             break;
 
         case MU_Modem_ParserState::ReadCmdUntilCR:
-            m_rxMessage[m_rxIdx] = m_ReadByte();
-            if (m_rxMessage[m_rxIdx] == '\r')
+            _rxBuffer[_rxIndex] = readByte();
+            if (_rxBuffer[_rxIndex] == '\r')
             {
-                m_rxIdx++;
+                _rxIndex++;
                 m_parserState = MU_Modem_ParserState::ReadCmdUntilLF;
             }
-            else if (m_rxMessage[m_rxIdx] == '\n' || m_rxMessage[m_rxIdx] == '*')
+            else if (_rxBuffer[_rxIndex] == '\n' || _rxBuffer[_rxIndex] == '*')
             {
-                m_UnreadByte(m_rxMessage[m_rxIdx]);
-                m_FlushGarbage();
-                return MU_Modem_CmdState::Garbage;
+                unreadByte(_rxBuffer[_rxIndex]);
+                flushGarbage();
+                return ModemParseResult::Garbage;
             }
             else
             {
-                m_rxIdx++;
-                if (m_rxIdx >= sizeof(m_rxMessage))
+                _rxIndex++;
+                if (_rxIndex >= RX_BUFFER_SIZE)
                 {
                     m_ResetParser();
-                    return MU_Modem_CmdState::Overflow;
+                    return ModemParseResult::Overflow;
                 }
             }
             break;
 
         case MU_Modem_ParserState::ReadCmdUntilLF:
-            m_rxMessage[m_rxIdx] = m_ReadByte();
-            if (m_rxMessage[m_rxIdx] == '\n')
+            _rxBuffer[_rxIndex] = readByte();
+            if (_rxBuffer[_rxIndex] == '\n')
             {
-                m_rxIdx--;                    // exclude LF
-                m_rxMessage[m_rxIdx] = 0;     // null terminate
-                m_rxMessage[m_rxIdx - 1] = 0; // exclude CR
+                _rxIndex--;              // exclude LF
+                _rxBuffer[_rxIndex] = 0; // null terminate
                 m_parserState = MU_Modem_ParserState::Start;
-                return MU_Modem_CmdState::FinishedCmdResponse;
+                return ModemParseResult::FinishedCmdResponse;
             }
             else
             {
-                m_FlushGarbage();
-                return MU_Modem_CmdState::Garbage;
+                flushGarbage();
+                return ModemParseResult::Garbage;
             }
             break;
 
         case MU_Modem_ParserState::ReadOptionUntilCR:
         {
-            uint8_t c = m_ReadByte();
+            uint8_t c = readByte();
             if (c == '\r')
             {
                 m_parserState = MU_Modem_ParserState::ReadOptionUntilLF;
@@ -1036,43 +925,43 @@ MU_Modem_CmdState MU_Modem::m_Parse()
             else
             {
                 // Option data (like /R ...)
-                if (m_rxIdx < sizeof(m_drMessage))
-                    m_drMessage[m_rxIdx++] = c;
+                if (_rxIndex < sizeof(m_drMessage))
+                    m_drMessage[_rxIndex++] = c;
                 else
                 {
-                    m_FlushGarbage();
-                    return MU_Modem_CmdState::Overflow;
+                    flushGarbage();
+                    return ModemParseResult::Overflow;
                 }
             }
         }
         break;
 
         case MU_Modem_ParserState::ReadOptionUntilLF:
-            if (m_ReadByte() == '\n')
+            if (readByte() == '\n')
             {
                 // Parse potential route info in m_drMessage
                 // Format: Payload... /R XX,XX
                 // Check if we have extra data
-                if (m_rxIdx > m_drMessageLen)
+                if (_rxIndex > m_drMessageLen)
                 {
                     // Look for /R
                     // (Simple parsing for now, assuming standard format)
-                    for (int i = m_drMessageLen; i < m_rxIdx - 2; i++)
+                    for (int i = m_drMessageLen; i < _rxIndex - 2; i++)
                     {
                         if (m_drMessage[i] == '/' && m_drMessage[i + 1] == 'R')
                         {
                             // Found route info
                             // Simulate RT response parsing
                             char tmp[64];
-                            int rLen = m_rxIdx - (i + 3); // Skip "/R "
+                            int rLen = _rxIndex - (i + 3); // Skip "/R "
                             if (rLen > 0 && rLen < 60)
                             {
                                 memcpy(tmp, &m_drMessage[i + 3], rLen);
                                 tmp[rLen] = 0;
                                 char rtSim[70];
                                 sprintf(rtSim, "*RT=%s", tmp);
-                                memcpy(m_rxMessage, rtSim, strlen(rtSim));
-                                m_rxIdx = strlen(rtSim);
+                                memcpy(_rxBuffer, rtSim, strlen(rtSim));
+                                _rxIndex = strlen(rtSim);
                                 m_HandleMessage_RT(m_drRouteInfo, 12, &m_drNumRouteNodes);
                             }
                             break;
@@ -1081,40 +970,17 @@ MU_Modem_CmdState MU_Modem::m_Parse()
                 }
                 m_drMessagePresent = true;
                 m_parserState = MU_Modem_ParserState::Start;
-                return MU_Modem_CmdState::FinishedDrResponse;
+                return ModemParseResult::FinishedDrResponse;
             }
             else
             {
-                m_FlushGarbage();
-                return MU_Modem_CmdState::Garbage;
+                flushGarbage();
+                return ModemParseResult::Garbage;
             }
             break;
         }
     }
-    return MU_Modem_CmdState::Parsing;
-}
-
-MU_Modem_Error MU_Modem::m_WaitCmdResponse(uint32_t ms)
-{
-    m_StartTimeout(ms);
-    while (!m_IsTimeout())
-    {
-        switch (m_Parse())
-        {
-        case MU_Modem_CmdState::Parsing:
-            delay(1);
-            break;
-        case MU_Modem_CmdState::FinishedCmdResponse:
-            return MU_Modem_Error::Ok;
-        case MU_Modem_CmdState::FinishedDrResponse:
-            if (m_pCallback)
-                m_pCallback(MU_Modem_Error::Ok, MU_Modem_Response::DataReceived, m_lastRxRSSI, m_drMessage, m_drMessageLen, m_drRouteInfo, m_drNumRouteNodes);
-            break;
-        default:
-            return MU_Modem_Error::Fail;
-        }
-    }
-    return MU_Modem_Error::Fail;
+    return ModemParseResult::Parsing;
 }
 
 MU_Modem_Error MU_Modem::m_DispatchCmdResponseAsync()
@@ -1140,8 +1006,8 @@ MU_Modem_Error MU_Modem::m_DispatchCmdResponseAsync()
         val = (int32_t)sn;
         break;
     case MU_Modem_Response::RssiAllChannels:
-        payload = m_rxMessage;
-        len = m_rxIdx;
+        payload = _rxBuffer;
+        len = _rxIndex;
         break;
     default:
         break;
@@ -1157,43 +1023,8 @@ MU_Modem_Error MU_Modem::SendRawCommand(const char *command, char *responseBuffe
 {
     if (m_asyncExpectedResponse != MU_Modem_Response::Idle)
         return MU_Modem_Error::Busy;
-    m_WriteString(command);
-    MU_Modem_Error err = m_WaitCmdResponse(timeoutMs);
-    if (err == MU_Modem_Error::Ok)
-    {
-        if (m_rxIdx < bufferSize)
-        {
-            memcpy(responseBuffer, m_rxMessage, m_rxIdx);
-            responseBuffer[m_rxIdx] = 0;
-        }
-        else
-            err = MU_Modem_Error::BufferTooSmall;
-    }
-    return err;
+    return sendRawCommand(command, responseBuffer, bufferSize, timeoutMs);
 }
-
-MU_Modem_Error MU_Modem::SendRawCommandAsync(const char *command, uint32_t timeoutMs)
-{
-    if (m_asyncExpectedResponse != MU_Modem_Response::Idle)
-        return MU_Modem_Error::Busy;
-    m_WriteString(command);
-    m_asyncExpectedResponse = MU_Modem_Response::GenericResponse;
-    m_StartTimeout(timeoutMs);
-    return MU_Modem_Error::Ok;
-}
-
-// Helpers Implementation
-bool MU_Modem::m_IsTimeout()
-{
-    return !bTimeout && (millis() - startTime > timeOut) ? (bTimeout = true) : bTimeout;
-}
-void MU_Modem::m_StartTimeout(uint32_t ms)
-{
-    bTimeout = false;
-    startTime = millis();
-    timeOut = ms;
-}
-void MU_Modem::m_ClearTimeout() { bTimeout = true; }
 
 MU_Modem_Error MU_Modem::m_SendCmd(const char *cmd)
 {
@@ -1202,102 +1033,47 @@ MU_Modem_Error MU_Modem::m_SendCmd(const char *cmd)
 
     char buf[16];
     snprintf(buf, sizeof(buf), "%s\r\n", cmd);
-    m_WriteString(buf);
+    writeString(buf);
 
-    return m_WaitCmdResponse();
+    return waitForResponse();
 }
 
 MU_Modem_Error MU_Modem::m_SetByteValue(const char *cmdPrefix, uint8_t value, bool saveValue, const char *respPrefix, size_t respLen)
 {
     if (m_asyncExpectedResponse != MU_Modem_Response::Idle)
         return MU_Modem_Error::Busy;
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%s%02X%s\r\n", cmdPrefix, value, saveValue ? "/W" : "");
-    m_WriteString(buf);
-    MU_Modem_Error err = m_WaitCmdResponse();
-    if (err == MU_Modem_Error::Ok && saveValue)
-        err = m_ProcessSaveResponse(true);
-    if (err == MU_Modem_Error::Ok)
-    {
-        uint8_t v;
-        if (m_HandleMessageHexByte(&v, respLen, respPrefix) != MU_Modem_Error::Ok || v != value)
-            err = MU_Modem_Error::Fail;
-    }
-    return err;
+    return setByteValue(cmdPrefix, value, saveValue, respPrefix, respLen);
 }
 
 MU_Modem_Error MU_Modem::m_GetByteValue(const char *cmdPrefix, uint8_t *pValue, const char *respPrefix, size_t respLen)
 {
-    MU_Modem_Error err = m_SendCmd(cmdPrefix);
-    if (err == MU_Modem_Error::Ok)
-        err = m_HandleMessageHexByte(pValue, respLen, respPrefix);
-    return err;
-}
-
-MU_Modem_Error MU_Modem::m_GetBoolValue(const char *cmdPrefix, bool *pValue, const char *respPrefix)
-{
-    MU_Modem_Error err = m_SendCmd(cmdPrefix);
-    if (err == MU_Modem_Error::Ok)
-    {
-        if (m_rxIdx == strlen(respPrefix) + 2 && strncmp(respPrefix, (char *)m_rxMessage, strlen(respPrefix)) == 0)
-        {
-            if (strncmp((char *)m_rxMessage + strlen(respPrefix), "ON", 2) == 0)
-                *pValue = true;
-            else
-                *pValue = false;
-        }
-        else
-            err = MU_Modem_Error::Fail;
-    }
-    return err;
-}
-
-MU_Modem_Error MU_Modem::m_SetBoolValue(bool enabled, bool saveValue, const char *cmdOn, const char *cmdOff, const char *respPrefix)
-{
     if (m_asyncExpectedResponse != MU_Modem_Response::Idle)
         return MU_Modem_Error::Busy;
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%s%s\r\n", enabled ? cmdOn : cmdOff, saveValue ? "/W" : "");
-    m_WriteString(buf);
-    MU_Modem_Error err = m_WaitCmdResponse();
-    if (err == MU_Modem_Error::Ok && saveValue)
-        err = m_ProcessSaveResponse(true);
-    if (err == MU_Modem_Error::Ok)
-    {
-        bool v;
-        if (m_rxIdx == strlen(respPrefix) + 2 && strncmp(respPrefix, (char *)m_rxMessage, strlen(respPrefix)) == 0)
-        {
-            if (strncmp((char *)m_rxMessage + strlen(respPrefix), enabled ? "ON" : "OF", 2) != 0)
-                err = MU_Modem_Error::Fail;
-        }
-        else
-            err = MU_Modem_Error::Fail;
-    }
-    return err;
+    return getByteValue(cmdPrefix, pValue, respPrefix, respLen);
 }
 
 MU_Modem_Error MU_Modem::m_HandleMessageHexByte(uint8_t *pValue, uint32_t responseLen, const char *responsePrefix)
 {
-    if (m_rxIdx != responseLen || strncmp(responsePrefix, (char *)m_rxMessage, strlen(responsePrefix)) != 0)
+    if (_rxIndex != responseLen || strncmp(responsePrefix, (char *)_rxBuffer, strlen(responsePrefix)) != 0)
         return MU_Modem_Error::Fail;
     uint32_t v;
-    if (s_ParseHex(&m_rxMessage[strlen(responsePrefix)], 2, &v))
+    if (parseHex(&_rxBuffer[strlen(responsePrefix)], 2, &v))
     {
         *pValue = (uint8_t)v;
         return MU_Modem_Error::Ok;
     }
-    return MU_Modem_Err or ::Fail;
+    return MU_Modem_Error::Fail;
 }
 
 MU_Modem_Error MU_Modem::m_HandleMessageHexWord(uint16_t *pValue, uint32_t responseLen, const char *responsePrefix)
 {
-    if (m_rxIdx != responseLen || strncmp(responsePrefix, (char *)m_rxMessage, strlen(responsePrefix)) != 0)
+    if (_rxIndex != responseLen || strncmp(responsePrefix, (char *)_rxBuffer, strlen(responsePrefix)) != 0)
     {
         return MU_Modem_Error::Fail;
     }
 
     uint32_t v;
-    if (s_ParseHex(&m_rxMessage[strlen(responsePrefix)], 4, &v))
+    if (parseHex(&_rxBuffer[strlen(responsePrefix)], 4, &v))
     {
         *pValue = (uint16_t)v;
         return MU_Modem_Error::Ok;
@@ -1320,28 +1096,28 @@ MU_Modem_Error MU_Modem::m_HandleMessage_RA(int16_t *pRssi)
 MU_Modem_Error MU_Modem::m_HandleMessage_SN(uint32_t *pSerialNumber)
 {
     size_t pl = strlen(MU_GET_SERIAL_NUMBER_RESPONSE_PREFIX);
-    if (m_rxIdx < MU_GET_SERIAL_NUMBER_RESPONSE_MIN_LEN || strncmp(MU_GET_SERIAL_NUMBER_RESPONSE_PREFIX, (char *)m_rxMessage, pl) != 0)
+    if (_rxIndex < MU_GET_SERIAL_NUMBER_RESPONSE_MIN_LEN || strncmp(MU_GET_SERIAL_NUMBER_RESPONSE_PREFIX, (char *)_rxBuffer, pl) != 0)
         return MU_Modem_Error::Fail;
     int offset = pl;
-    if (isalpha(m_rxMessage[offset]))
+    if (isalpha(_rxBuffer[offset]))
         offset++;
     char tmp[16];
-    memcpy(tmp, &m_rxMessage[offset], m_rxIdx - offset);
-    tmp[m_rxIdx - offset] = 0;
+    memcpy(tmp, &_rxBuffer[offset], _rxIndex - offset);
+    tmp[_rxIndex - offset] = 0;
     *pSerialNumber = atol(tmp);
     return MU_Modem_Error::Ok;
 }
 
 MU_Modem_Error MU_Modem::m_ProcessSaveResponse(bool saveValue)
 {
-    if (m_rxIdx == MU_WRITE_VALUE_RESPONSE_LEN && strncmp(MU_WRITE_VALUE_RESPONSE_PREFIX, (char *)m_rxMessage, MU_WRITE_VALUE_RESPONSE_LEN) == 0)
-        return m_WaitCmdResponse();
+    if (_rxIndex == CD_WRITE_OK_RESPONSE_LEN && strncmp(CD_WRITE_OK_RESPONSE, (char *)_rxBuffer, CD_WRITE_OK_RESPONSE_LEN) == 0)
+        return waitForResponse();
     return MU_Modem_Error::Fail;
 }
 
 MU_Modem_Error MU_Modem::m_HandleMessage_RT(uint8_t *pDestBuffer, size_t bufferSize, uint8_t *pNumNodes)
 {
-    if (strncmp("*RT=NA", (char *)m_rxMessage, 6) == 0)
+    if (strncmp(MU_ROUTE_NA_RESPONSE, (char *)_rxBuffer, 6) == 0)
     {
         *pNumNodes = 0;
         return MU_Modem_Error::Ok;
