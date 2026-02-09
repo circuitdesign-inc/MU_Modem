@@ -1117,11 +1117,68 @@ MU_Modem_Error MU_Modem::m_ProcessSaveResponse(bool saveValue)
 
 MU_Modem_Error MU_Modem::m_HandleMessage_RT(uint8_t *pDestBuffer, size_t bufferSize, uint8_t *pNumNodes)
 {
-    if (strncmp(MU_ROUTE_NA_RESPONSE, (char *)_rxBuffer, 6) == 0)
+    if (!pDestBuffer || bufferSize == 0 || !pNumNodes)
+        return MU_Modem_Error::InvalidArg;
+
+    *pNumNodes = 0; // Initialize
+
+    size_t prefixLen = strlen(MU_SET_ROUTE_RESPONSE_PREFIX); // "*RT="
+
+    // Check prefix
+    if (_rxIndex < prefixLen || strncmp(MU_SET_ROUTE_RESPONSE_PREFIX, (char *)_rxBuffer, prefixLen) != 0)
+    {
+        return MU_Modem_Error::Fail;
+    }
+
+    // Check for "NA"
+    if (_rxIndex == 6 && strncmp(MU_ROUTE_NA_RESPONSE, (char *)_rxBuffer, 6) == 0)
     {
         *pNumNodes = 0;
         return MU_Modem_Error::Ok;
     }
-    // Implement simple parsing
-    return MU_Modem_Error::Ok; // Placeholder, logic is in previous implementation
+
+    // Parse comma-separated hex values
+    const char *routeStr = (const char *)_rxBuffer + prefixLen;
+    size_t routeStrLen = _rxIndex - prefixLen;
+    uint8_t nodeCount = 0;
+    const char *pStart = routeStr;
+    const char *pEnd = routeStr + routeStrLen;
+
+    while (pStart < pEnd && nodeCount < bufferSize)
+    {
+        const char *pComma = (const char *)memchr(pStart, ',', pEnd - pStart);
+        size_t hexLen = (pComma != nullptr) ? (pComma - pStart) : (pEnd - pStart);
+
+        if (hexLen != 2)
+        {
+            return MU_Modem_Error::Fail;
+        }
+
+        uint32_t hexValue;
+        if (parseHex((const uint8_t *)pStart, 2, &hexValue))
+        {
+            pDestBuffer[nodeCount++] = (uint8_t)hexValue;
+        }
+        else
+        {
+            return MU_Modem_Error::Fail;
+        }
+
+        if (pComma != nullptr)
+        {
+            pStart = pComma + 1; // Move past the comma
+        }
+        else
+        {
+            pStart = pEnd; // Reached the end
+        }
+    }
+
+    if (pStart < pEnd)
+    {
+        return MU_Modem_Error::BufferTooSmall;
+    }
+
+    *pNumNodes = nodeCount;
+    return MU_Modem_Error::Ok;
 }
