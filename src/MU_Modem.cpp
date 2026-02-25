@@ -851,6 +851,15 @@ MU_Modem_Error MU_Modem::GetRssiCurrentChannel(int16_t *pRssi)
     return err;
 }
 
+MU_Modem_Error MU_Modem::GetRssiCurrentChannelAsync()
+{
+    m_asyncExpectedResponse = MU_Modem_Response::RssiCurrentChannel;
+    char cmdBuf[8];
+    char *p = appendStr(cmdBuf, cmdBuf, MU_CMD_RSSI_CURRENT);
+    appendStr(cmdBuf, p, "\r\n");
+    return enqueueCommand(cmdBuf, CommandType::Simple, 1000);
+}
+
 MU_Modem_Error MU_Modem::GetAllChannelsRssi(int16_t *pRssiBuffer, size_t bufferSize, uint8_t *pNumRssiValues)
 {
     if (!pRssiBuffer || !pNumRssiValues)
@@ -901,7 +910,10 @@ MU_Modem_Error MU_Modem::GetAllChannelsRssi(int16_t *pRssiBuffer, size_t bufferS
 MU_Modem_Error MU_Modem::GetAllChannelsRssiAsync()
 {
     m_asyncExpectedResponse = MU_Modem_Response::RssiAllChannels;
-    return enqueueCommand(MU_CMD_RSSI_ALL, CommandType::Simple, 20000);
+    char cmdBuf[8];
+    char *p = appendStr(cmdBuf, cmdBuf, MU_CMD_RSSI_ALL);
+    appendStr(cmdBuf, p, "\r\n");
+    return enqueueCommand(cmdBuf, CommandType::Simple, 20000);
 }
 
 MU_Modem_Error MU_Modem::SetRouteInfo(const uint8_t *pRouteInfo, uint8_t numNodes, bool saveValue)

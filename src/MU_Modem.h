@@ -356,6 +356,13 @@ public:
     MU_Modem_Error GetRssiCurrentChannel(int16_t *pRssi);
 
     /**
+     * @brief Gets the RSSI of the current channel (Asynchronous).
+     * The result will be delivered via the callback with type MU_Modem_Response::RssiCurrentChannel.
+     * @return MU_Modem_Error::Ok if the command was successfully queued.
+     */
+    MU_Modem_Error GetRssiCurrentChannelAsync();
+
+    /**
      * @brief Gets RSSI values for all channels (Synchronous).
      * This operation takes several seconds to complete.
      * @param pRssiBuffer Buffer to store RSSI values.

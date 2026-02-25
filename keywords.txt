@@ -22,6 +22,7 @@ GetPower					KEYWORD2
 GetRouteInfo				KEYWORD2
 GetRouteInfoAddMode			KEYWORD2
 GetRssiCurrentChannel		KEYWORD2
+GetRssiCurrentChannelAsync	KEYWORD2
 GetSerialNumber				KEYWORD2
 GetSerialNumberAsync		KEYWORD2
 GetUserID					KEYWORD2
