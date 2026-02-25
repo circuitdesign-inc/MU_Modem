@@ -22,7 +22,6 @@ GetPower					KEYWORD2
 GetRouteInfo				KEYWORD2
 GetRouteInfoAddMode			KEYWORD2
 GetRssiCurrentChannel		KEYWORD2
-GetRssiCurrentChannelAsync	KEYWORD2
 GetSerialNumber				KEYWORD2
 GetSerialNumberAsync		KEYWORD2
 GetUserID					KEYWORD2
@@ -42,8 +41,7 @@ SetRouteInfoAddMode			KEYWORD2
 setDebugStream				KEYWORD2
 SoftReset					KEYWORD2
 TransmitData				KEYWORD2
-TransmitDataFireAndForget	KEYWORD2
-TransmitDataWithRoute		KEYWORD2
+TransmitDataAsync			KEYWORD2
 Work						KEYWORD2
 
 #######################################

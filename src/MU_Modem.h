@@ -26,44 +26,67 @@
 static constexpr uint32_t MU_DEFAULT_BAUDRATE = 19200;
 
 /**
- * @brief Channel range constants for MU modem models.
+ * @brief Channel range constants.
  */
-static constexpr uint8_t MU_CHANNEL_MIN_429 = 0x07;  ///!< Minimum channel number for 429MHz model
-static constexpr uint8_t MU_CHANNEL_MAX_429 = 0x2E;  ///!< Maximum channel number for 429MHz model
-static constexpr uint8_t MU_CHANNEL_MIN_1216 = 0x02; ///!< Minimum channel number for 1.2GHz model
-static constexpr uint8_t MU_CHANNEL_MAX_1216 = 0x14; ///!< Maximum channel number for 1.2GHz model
+static constexpr uint8_t MU_CHANNEL_MIN_429 = 0x07;  //!< Minimum channel number for 429MHz model
+static constexpr uint8_t MU_CHANNEL_MAX_429 = 0x2E;  //!< Maximum channel number for 429MHz model
+static constexpr uint8_t MU_CHANNEL_MIN_1216 = 0x02; //!< Minimum channel number for 1.2GHz model
+static constexpr uint8_t MU_CHANNEL_MAX_1216 = 0x14; //!< Maximum channel number for 1.2GHz model
 
-/**
- * @brief Maximum payload and route node constants.
- */
-static constexpr uint8_t MU_MAX_PAYLOAD_LEN = 255;
+static constexpr uint8_t MU_MAX_PAYLOAD_LEN = 255;      //!< Maximum payload and route node constants.
 static constexpr uint8_t MU_MAX_ROUTE_NODES_IN_DR = 12; //!< Max route nodes in a *DR response (src + 10 relays + dest)
-
-// --- Debug Configuration ---
-// Uncomment the following line to enable debug output
-// #define ENABLE_MU_MODEM_DEBUG
 
 /**
  * @enum MU_Modem_Response
- * @brief Defines the types of responses from the modem or internal states.
+ * @brief Defines the types of responses from the modem.
  */
 enum class MU_Modem_Response
 {
-    Idle,       //!< No message received or expected.
-    ParseError, //!< Garbage characters received.
-    Timeout,    //!< No response received within the timeout period.
-
-    // Serial commands responses
+    Idle,         //!< No message received or expected.
+    ParseError,   //!< Garbage characters received.
+    Timeout,      //!< No response received within the timeout period.
+    TxComplete,   //!< Transmission accepted (*DT response received)
+    TxFailed,     //!< Transmission failed (LBT Error or NACK)
+    DataReceived, //!< Data packet received
+    // Serial command responses
     ShowMode,           //!< Response indicating the modem's mode.
     SaveValue,          //!< Response confirming a value has been written to NVM ("*WR=PS").
     Channel,            //!< Response related to the frequency channel ("*CH...").
     SerialNumber,       //!< Response containing the device's serial number ("*SN=...").
-    MU_Modem_DtAck,     //!< Acknowledgment for the @DT command.
-    DataReceived,       //!< Indicates that a data packet has been received ("*DR=..." or "*DS=...").
     RssiCurrentChannel, //!< Response containing the current RSSI value ("*RA=...").
     RssiAllChannels,    //!< Response containing RSSI values for all channels ("*RC=...").
     RouteInfo,          //!< Response containing route information ("*RT=...").
+    GroupID,            //!< Response related to Group ID ("*GI...").
+    EquipmentID,        //!< Response related to Equipment ID ("*EI...").
+    DestinationID,      //!< Response related to Destination ID ("*DI...").
     GenericResponse,    //!< Generic response received from SendRawCommand.
+};
+
+/**
+ * @struct MU_Modem_Event
+ * @brief Structure containing information about an asynchronous event or response.
+ */
+struct MU_Modem_Event
+{
+    ModemError error;           //!< Status of the operation.
+    MU_Modem_Response type;     //!< Type of response or event.
+    int32_t value;              //!< Numerical value (RSSI, Serial Number, etc.)
+    const uint8_t *pPayload;    //!< Pointer to payload (for DataReceived).
+    uint16_t payloadLen;        //!< Length of payload.
+    const uint8_t *pRouteNodes; //!< Pointer to route info (for DataReceived).
+    uint8_t numRouteNodes;      //!< Number of route nodes.
+
+    // --- Constructors ---
+    // 1. Default: Initialize everything to zero/null for safety
+    MU_Modem_Event() : error(ModemError::Ok), type(MU_Modem_Response::Idle), value(0), pPayload(nullptr), payloadLen(0), pRouteNodes(nullptr), numRouteNodes(0) {}
+
+    // 2. Helper for simple status events
+    MU_Modem_Event(ModemError err, MU_Modem_Response t)
+        : error(err), type(t), value(0), pPayload(nullptr), payloadLen(0), pRouteNodes(nullptr), numRouteNodes(0) {}
+
+    // 3. Helper for events with a value (RSSI, Channel, etc.)
+    MU_Modem_Event(ModemError err, MU_Modem_Response t, int32_t val)
+        : error(err), type(t), value(val), pPayload(nullptr), payloadLen(0), pRouteNodes(nullptr), numRouteNodes(0) {}
 };
 
 /**
@@ -83,38 +106,24 @@ enum class MU_Modem_FrequencyModel
 };
 
 /**
- * @enum MU_Modem_ParserState (Internal)
- * @brief Represents the low-level state of the command parser state machine.
+ * @enum MU_Modem_ParserState
+ * @brief Internal parser state for MU specific responses.
  */
 enum class MU_Modem_ParserState
 {
-    Start = 0,
-
-    ReadCmdFirstLetter,  //!< First char was '*', now reading the first letter.
-    ReadCmdSecondLetter, //!< Reading the second letter.
-    ReadCmdParam,        //!< Reading command parameters (e.g., after '*XX').
-
-    RadioDrSize,    //!< Parsing the size of a *DR (data received) message.
-    RadioDsRssi,    //!< Parsing the RSSI of a *DS (data received with RSSI) message.
-    RadioDrPayload, //!< Reading the payload of a *DR/*DS message.
-
-    ReadCmdUntilCR,    //!< Reading until a carriage return ('\r') is found.
-    ReadCmdUntilLF,    //!< Reading until a line feed ('\n') is found.
-    ReadOptionUntilCR, //!< Reading optional data (like route info) until '\r'.
-    ReadOptionUntilLF, //!< Reading optional data until '\n'.
+    Start,
+    ReadCmdPrefix,    //!< Reading "*DR=" or "*IR=" etc.
+    RadioDrSize,      //!< Parsing size of *DR
+    RadioDsRssi,      //!< Parsing RSSI of *DS
+    RadioDrPayload,   //!< Reading payload
+    ReadOptionUntilLF //!< Reading route info etc.
 };
 
 /**
  * @brief Callback function type for asynchronous operations and received data events.
- * @param error Status of the received response. If not MU_Modem_Error::Ok, other parameters may be invalid.
- * @param responseType The type of the response or event (MU_Modem_Response).
- * @param value A numerical value associated with the response (e.g., RSSI).
- * @param pPayload Pointer to the payload of a received data packet.
- * @param len Length of the received payload in bytes.
- * @param pRouteInfo Pointer to an array containing the route information of the received packet.
- * @param numRouteNodes Number of nodes in the pRouteInfo array.
+ * @param event Structure containing event details.
  */
-typedef void (*MU_Modem_AsyncCallback)(MU_Modem_Error error, MU_Modem_Response responseType, int32_t value, const uint8_t *pPayload, uint16_t len, const uint8_t *pRouteInfo, uint8_t numRouteNodes);
+typedef void (*MU_Modem_AsyncCallback)(const MU_Modem_Event &event);
 
 /**
  * @class MU_Modem
@@ -122,9 +131,7 @@ typedef void (*MU_Modem_AsyncCallback)(MU_Modem_Error error, MU_Modem_Response r
  */
 class MU_Modem : public SerialModemBase
 {
-public: // methods
-    // --- Initialization & Lifecycle ---
-
+public:
     /**
      * @brief Initializes the modem driver.
      * @param pUart A reference to the Stream object (e.g., Serial1).
@@ -135,34 +142,27 @@ public: // methods
     MU_Modem_Error begin(Stream &pUart, MU_Modem_FrequencyModel frequencyModel, MU_Modem_AsyncCallback pCallback = nullptr);
 
     /**
-     * @brief Main processing loop.
+     * @brief Main processing loop (Delegates to SerialModemBase::update).
      */
     void Work();
 
     /**
-     * @brief Performs a software reset.
-     * @return MU_Modem_Error::Ok on success, or an error code on failure.
+     * @brief Sets an external buffer to store received packets for HasPacket()/GetPacket().
+     * Not required if using Async Callback only.
+     * @param buf Pointer to the user-allocated buffer.
+     * @param size Size of the buffer (should be at least MU_MAX_PAYLOAD_LEN).
      */
-    MU_Modem_Error SoftReset();
-
-    // --- Configuration & Debug ---
-
-    /**
-     * @brief Sets the asynchronous callback function.
-     * @param pCallback A pointer to the callback function. Set to nullptr to disable callbacks.
-     */
-    void SetAsyncCallback(MU_Modem_AsyncCallback pCallback) { m_pCallback = pCallback; }
-
-    /**
-     * @brief Sets the stream for debug output.
-     * @param debugStream Pointer to the Stream object (e.g., &Serial). Set to nullptr to disable debug output.
-     */
-    // void setDebugStream(Stream *debugStream); // Inherited from SerialModemBase
+    void setPacketBuffer(uint8_t *buf, uint8_t size)
+    {
+        m_pLegacyBuffer = buf;
+        m_legacyBufferSize = size;
+    }
 
     // --- Data Transmission ---
-
     /**
-     * @brief Transmits a data packet.
+     * @brief Transmits a data packet (Synchronous/Blocking).
+     * Queues the command and waits for completion.
+     * Checks for LBT error (*IR=01) for a short period after command acceptance.
      * @param pMsg Pointer to the data buffer to transmit.
      * @param len Length of the data in bytes.
      * @param useRouteRegister If true, appends the /R option to use the route register.
@@ -171,115 +171,18 @@ public: // methods
     MU_Modem_Error TransmitData(const uint8_t *pMsg, uint8_t len, bool useRouteRegister = false);
 
     /**
-     * @brief Transmits a data packet without waiting for transmission completion.
+     * @brief Transmits a data packet (Asynchronous/Non-blocking).
+     * Queues the command and returns immediately.
+     * Completion result (TxComplete/TxFailed) is notified via callback.
      * @param pMsg Pointer to the data buffer to transmit.
      * @param len Length of the data in bytes.
      * @param useRouteRegister If true, appends the /R option to use the route register.
      * @return MU_Modem_Error::Ok if command accepted.
      */
-    MU_Modem_Error TransmitDataFireAndForget(const uint8_t *pMsg, uint8_t len, bool useRouteRegister = false);
+    MU_Modem_Error TransmitDataAsync(const uint8_t *pMsg, uint8_t len, bool useRouteRegister = false);
 
-    /**
-     * @brief Transmits data with explicit route information.
-     * @param pRouteInfo Pointer to an array containing the route information (relay station IDs and destination ID).
-     * @param numNodes The number of IDs in the route information (1 <= numNodes <= 11).
-     * @param pMsg Pointer to the data buffer to transmit.
-     * @param len Length of the data in bytes.
-     * @param requestAck If true, requests an ACK response from the destination station (/A option).
-     * @param outputToRelays If true, outputs the data to relay stations as well (/B or /S option).
-     * @return MU_Modem_Error::Ok on success, or an error code on failure.
-     */
-    MU_Modem_Error TransmitDataWithRoute(const uint8_t *pRouteInfo, uint8_t numNodes, const uint8_t *pMsg, uint8_t len, bool requestAck = false, bool outputToRelays = false);
-
-    // --- Data Reception ---
-
-    /**
-     * @brief Checks if a packet is available.
-     */
-    bool HasPacket() { return m_drMessagePresent; }
-
-    /**
-     * @brief Retrieves the packet data.
-     * @param ppData Pointer to a pointer that will be set to the packet's data buffer.
-     * @param len Pointer to a variable to store the packet's length.
-     * @return MU_Modem_Error::Ok if a packet was retrieved, MU_Modem_Error::Fail otherwise.
-     */
-    MU_Modem_Error GetPacket(const uint8_t **ppData, uint8_t *len);
-
-    /**
-     * @brief Deletes the current packet.
-     */
-    void DeletePacket() { m_drMessagePresent = false; }
-
-    // --- Modem Status & RSSI ---
-
-    /**
-     * @brief Checks the current channel status (@CS).
-     * @return
-     * - MU_Modem_Error::Ok if the channel is clear (*CS=EN).
-     * - MU_Modem_Error::FailLbt if the channel is busy (*CS=DI).
-     * - MU_Modem_Error::Fail on timeout or communication error.
-     */
-    MU_Modem_Error CheckCarrierSense();
-
-    /**
-     * @brief Gets the current RSSI value of the channel.
-     * @param pRssi Pointer to a variable to store the RSSI value in dBm.
-     * @return MU_Modem_Error::Ok on success, or an error code on failure.
-     */
-    MU_Modem_Error GetRssiCurrentChannel(int16_t *pRssi);
-
-    /**
-     * @brief Asynchronously requests the current RSSI value.
-     * @return MU_Modem_Error::Ok if the request was sent successfully, MU_Modem_Error::Busy if busy.
-     */
-    MU_Modem_Error GetRssiCurrentChannelAsync();
-
-    /**
-     * @brief Gets RSSI values for all channels.
-     * @param pRssiBuffer Pointer to an array to store the RSSI values in dBm.
-     * @param bufferSize The size of the pRssiBuffer in number of elements (int16_t).
-     *                   It must be large enough to hold all channel data.
-     * @param pNumRssiValues Pointer to a variable to store the number of RSSI values actually written to the buffer.
-     * @return MU_Modem_Error::Ok on success, MU_Modem_Error::BufferTooSmall if the buffer is not large enough, or other error codes.
-     */
-    MU_Modem_Error GetAllChannelsRssi(int16_t *pRssiBuffer, size_t bufferSize, uint8_t *pNumRssiValues);
-
-    /**
-     * @brief Asynchronously requests RSSI values for all channels.
-     * @return MU_Modem_Error::Ok if the request was sent successfully, MU_Modem_Error::Busy if busy.
-     */
-    MU_Modem_Error GetAllChannelsRssiAsync();
-
-    /**
-     * @brief Enables RSSI appending to received data (*DS).
-     * @return MU_Modem_Error::Ok on success, or an error code on failure.
-     */
-    MU_Modem_Error SetAddRssiValue();
-
-    // --- Device Information ---
-
-    /**
-     * @brief Gets the serial number.
-     * @param pSn Pointer to a variable to store the serial number.
-     * @return MU_Modem_Error::Ok on success, or an error code on failure.
-     */
-    MU_Modem_Error GetSerialNumber(uint32_t *pSerialNumber);
-
-    /**
-     * @brief Asynchronously requests the serial number.
-     * @return MU_Modem_Error::Ok if the request was sent successfully, MU_Modem_Error::Busy if busy.
-     */
-    MU_Modem_Error GetSerialNumberAsync();
-
-    /**
-     * @brief Gets the User ID.
-     * @param pUI Pointer to a variable to store the User ID.
-     * @return MU_Modem_Error::Ok on success, or an error code on failure.
-     */
-    MU_Modem_Error GetUserID(uint16_t *pUI);
-
-    // --- Basic Settings ---
+    // --- Configuration (Synchronous Wrappers) ---
+    // These methods block until the modem responds.
 
     /**
      * @brief Sets the UART baud rate of the modem.
@@ -300,10 +203,9 @@ public: // methods
      * @return MU_Modem_Error::Ok on success, or an error code on failure.
      */
     MU_Modem_Error SetChannel(uint8_t channel, bool saveValue);
-
     /**
      * @brief Gets the current frequency channel.
-     * @param pChannel Pointer to a variable to store the channel number.
+     * @param pChannel Pointer to store the retrieved channel number.
      * @return MU_Modem_Error::Ok on success, or an error code on failure.
      */
     MU_Modem_Error GetChannel(uint8_t *pChannel);
@@ -315,10 +217,9 @@ public: // methods
      * @return MU_Modem_Error::Ok on success, or an error code on failure.
      */
     MU_Modem_Error SetPower(uint8_t power, bool saveValue);
-
     /**
-     * @brief Gets the transmission power setting.
-     * @param pPower Pointer to a variable to store the power setting (0x01 for 1mW, 0x10 for 10mW).
+     * @brief Gets the current transmission power setting.
+     * @param pPower Pointer to store the retrieved power setting (0x01 or 0x10).
      * @return MU_Modem_Error::Ok on success, or an error code on failure.
      */
     MU_Modem_Error GetPower(uint8_t *pPower);
@@ -332,10 +233,9 @@ public: // methods
      * @return MU_Modem_Error::Ok on success, or an error code on failure.
      */
     MU_Modem_Error SetDestinationID(uint8_t di, bool saveValue);
-
     /**
-     * @brief Gets the Destination ID.
-     * @param pDI Pointer to a variable to store the Destination ID.
+     * @brief Gets the current Destination ID.
+     * @param pDI Pointer to store the retrieved Destination ID.
      * @return MU_Modem_Error::Ok on success, or an error code on failure.
      */
     MU_Modem_Error GetDestinationID(uint8_t *pDI);
@@ -347,10 +247,9 @@ public: // methods
      * @return MU_Modem_Error::Ok on success, or an error code on failure.
      */
     MU_Modem_Error SetEquipmentID(uint8_t ei, bool saveValue);
-
     /**
-     * @brief Gets the Equipment ID.
-     * @param pEI Pointer to a variable to store the Equipment ID.
+     * @brief Gets the current Equipment ID (Own ID).
+     * @param pEI Pointer to store the retrieved Equipment ID.
      * @return MU_Modem_Error::Ok on success, or an error code on failure.
      */
     MU_Modem_Error GetEquipmentID(uint8_t *pEI);
@@ -362,16 +261,14 @@ public: // methods
      * @return MU_Modem_Error::Ok on success, or an error code on failure.
      */
     MU_Modem_Error SetGroupID(uint8_t gi, bool saveValue);
-
     /**
-     * @brief Gets the Group ID.
-     * @param pGI Pointer to a variable to store the Group ID.
+     * @brief Gets the current Group ID.
+     * @param pGI Pointer to store the retrieved Group ID.
      * @return MU_Modem_Error::Ok on success, or an error code on failure.
      */
     MU_Modem_Error GetGroupID(uint8_t *pGI);
 
     /**
-     * @brief Sets the route info add mode setting.
      * @brief Sets the route info add mode setting.
      * @param enabled True to enable (@RI ON), false to disable (@RI OF).
      * @param saveValue If true, saves the setting to non-volatile memory.
@@ -429,6 +326,67 @@ public: // methods
      */
     MU_Modem_Error ClearRouteInfo(bool saveValue);
 
+    // --- Info & Status ---
+    /**
+     * @brief Gets the serial number of the modem.
+     * @param pSerialNumber Pointer to store the retrieved serial number.
+     * @return MU_Modem_Error::Ok on success, or an error code on failure.
+     */
+    MU_Modem_Error GetSerialNumber(uint32_t *pSerialNumber);
+
+    /**
+     * @brief Gets the User ID of the modem.
+     * @param pUI Pointer to store the retrieved User ID.
+     * @return MU_Modem_Error::Ok on success, or an error code on failure.
+     */
+    MU_Modem_Error GetUserID(uint16_t *pUI);
+
+    /**
+     * @brief Checks the carrier sense status (LBT).
+     * Sends @CS command and waits for response.
+     * @return MU_Modem_Error::Ok if channel is clear, MU_Modem_Error::FailLbt if busy.
+     */
+    MU_Modem_Error CheckCarrierSense();
+
+    /**
+     * @brief Gets the RSSI (Received Signal Strength Indicator) of the current channel.
+     * @param pRssi Pointer to store the RSSI value in dBm (negative value).
+     * @return MU_Modem_Error::Ok on success, or an error code on failure.
+     */
+    MU_Modem_Error GetRssiCurrentChannel(int16_t *pRssi);
+
+    /**
+     * @brief Gets RSSI values for all channels (Synchronous).
+     * This operation takes several seconds to complete.
+     * @param pRssiBuffer Buffer to store RSSI values.
+     * @param bufferSize Size of the buffer (number of elements).
+     * @param pNumRssiValues Pointer to store the number of values retrieved.
+     * @return MU_Modem_Error::Ok on success, or an error code on failure.
+     */
+    MU_Modem_Error GetAllChannelsRssi(int16_t *pRssiBuffer, size_t bufferSize, uint8_t *pNumRssiValues);
+
+    /**
+     * @brief Starts getting RSSI values for all channels (Asynchronous).
+     * The result will be delivered via the callback with type MU_Modem_Response::RssiAllChannels.
+     * @return MU_Modem_Error::Ok if the command was successfully queued.
+     */
+    MU_Modem_Error GetAllChannelsRssiAsync();
+
+    /**
+     * @brief Enables appending RSSI value to received data (*DR).
+     * Sends @SI command. Used internally during initialization.
+     * @return MU_Modem_Error::Ok on success.
+     */
+    MU_Modem_Error SetAddRssiValue();
+
+    /**
+     * @brief Performs a software reset of the modem.
+     * Sends @SR command.
+     * @return MU_Modem_Error::Ok on success.
+     */
+    MU_Modem_Error SoftReset();
+
+    // --- Raw Command ---
     /**
      * @brief Sends a raw command.
      * @param command The null-terminated command string to send.
@@ -442,53 +400,76 @@ public: // methods
      */
     MU_Modem_Error SendRawCommand(const char *command, char *responseBuffer, size_t bufferSize, uint32_t timeoutMs = 500);
 
+    // --- Data Reception ---
+    // HasPacket/GetPacket/DeletePacket pattern is kept for compatibility,
+    // but Callback is preferred in this architecture.
     /**
-     * @brief Sends a raw command asynchronously.
+     * @brief Checks if a data packet has been received and is buffered (Legacy mode).
+     * @return True if a packet is available, false otherwise.
      */
-    MU_Modem_Error SendRawCommandAsync(const char *command, uint32_t timeoutMs = 500);
+    bool HasPacket() { return m_drMessagePresent; }
+
+    /**
+     * @brief Retrieves the buffered data packet (Legacy mode).
+     * @param ppData Output pointer to the data buffer.
+     * @param len Output pointer to the length of data.
+     * @return MU_Modem_Error::Ok if data is available, MU_Modem_Error::Fail otherwise.
+     */
+    MU_Modem_Error GetPacket(const uint8_t **ppData, uint8_t *len);
+
+    /**
+     * @brief Clears the buffered data packet flag (Legacy mode).
+     */
+    void DeletePacket() { m_drMessagePresent = false; }
+
+    /**
+     * @brief Registers or updates the asynchronous callback function.
+     * @param pCallback The callback function to register.
+     */
+    void SetAsyncCallback(MU_Modem_AsyncCallback pCallback) { m_pCallback = pCallback; }
 
 protected:
-    // --- SerialModemBase Overrides ---
+    // SerialModemBase overrides
     virtual ModemParseResult parse() override;
     virtual void onRxDataReceived() override;
+    virtual void onCommandComplete(ModemError result) override;
     virtual const char *getLogPrefix() const override { return "[MU Modem] "; }
 
-private: // meth
-    // Parser helpers
+private:
     void m_ResetParser();
 
-    // Parsing specific responses
-    MU_Modem_Error m_HandleMessage_RT(uint8_t *pDestBuffer, size_t bufferSize, uint8_t *pNumNodes);
-    MU_Modem_Error m_ProcessSaveResponse(bool saveValue);
-    MU_Modem_Error m_DispatchCmdResponseAsync();
+    // Parser sub-handlers
+    ModemParseResult m_HandleReadCmdPrefix(uint8_t c);
+    ModemParseResult m_HandleRadioDrSize(uint8_t c);
+    ModemParseResult m_HandleRadioDsRssi(uint8_t c);
+    ModemParseResult m_HandleRadioDrPayload(uint8_t c);
+    ModemParseResult m_HandleReadOptionUntilLF(uint8_t c);
 
-    MU_Modem_Error m_HandleMessage_WR();
-    MU_Modem_Error m_HandleMessage_RA(int16_t *pRssi);
-    MU_Modem_Error m_HandleMessage_SN(uint32_t *pSerialNumber);
-
-    // Generic Value Helpers
-    MU_Modem_Error m_SendCmd(const char *cmd);
-    MU_Modem_Error m_SetByteValue(const char *cmdPrefix, uint8_t value, bool saveValue, const char *respPrefix, size_t respLen);
-    MU_Modem_Error m_GetByteValue(const char *cmdPrefix, uint8_t *pValue, const char *respPrefix, size_t respLen);
-
-    MU_Modem_Error m_HandleMessageHexByte(uint8_t *pValue, uint32_t responseLen, const char *responsePrefix);
-    MU_Modem_Error m_HandleMessageHexWord(uint16_t *pValue, uint32_t responseLen, const char *responsePrefix);
-
-private:                                      // data
-    MU_Modem_AsyncCallback m_pCallback;       //!< User callback.
-    MU_Modem_FrequencyModel m_frequencyModel; //!< Frequency model.
+    MU_Modem_AsyncCallback m_pCallback;
+    MU_Modem_FrequencyModel m_frequencyModel;
 
     // Parser State
-    MU_Modem_ParserState m_parserState; //!< Internal parser state.
+    MU_Modem_ParserState m_parserState;
 
-    // Received Packet Data
-    bool m_drMessagePresent;                         //!< Packet ready flag.
-    uint8_t m_drMessageLen;                          //!< Packet length.
-    uint8_t m_drMessage[300];                        //!< Packet buffer.
-    int16_t m_lastRxRSSI;                            //!< Last packet RSSI.
-    uint8_t m_drRouteInfo[MU_MAX_ROUTE_NODES_IN_DR]; //!< Packet route info.
-    uint8_t m_drNumRouteNodes;                       //!< Packet route info count.
+    // Data Packet Buffer
+    // Kept separate from SerialModemBase::_rxBuffer to allow interleaving
+    int16_t m_lastRxRSSI;
+    uint8_t m_drRouteInfo[MU_MAX_ROUTE_NODES_IN_DR];
+    uint8_t m_drNumRouteNodes;
 
-    // Async State
-    MU_Modem_Response m_asyncExpectedResponse; //!< Expected async response.
+    bool m_drMessagePresent = false;
+    uint8_t m_drMessageLen = 0;
+
+    // Pointer to external buffer for legacy polling (GetPacket)
+    uint8_t *m_pLegacyBuffer = nullptr;
+    uint8_t m_legacyBufferSize = 0;
+
+    // Async Request State
+    MU_Modem_Response m_asyncExpectedResponse;
+
+    // Internal LBT Error Flag (set by parse when *IR=01 is seen)
+    volatile bool m_lbtErrorDetected;
+
+    // Flag to suppress async callbacks during synchronous operations
+    bool m_blockAsyncCallback;
 };

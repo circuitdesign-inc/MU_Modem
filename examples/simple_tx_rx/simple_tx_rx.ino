@@ -23,11 +23,13 @@
 
 MU_Modem modem;
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
-  
+
   // シリアルポートが開くまで待機
-  while (!Serial);
+  while (!Serial)
+    ;
 
   // モデム用のシリアルポートを初期化
   Serial1.begin(MU_DEFAULT_BAUDRATE);
@@ -39,9 +41,14 @@ void setup() {
   if (err != MU_Modem_Error::Ok)
   {
     Serial.println("MUモデムの初期化に失敗しました。接続を確認してください。");
-    while (true);
+    while (true)
+      ;
   }
   Serial.println("MUモデムが初期化されました。");
+
+  // 受信データを格納するためのバッファを設定します
+  static uint8_t rxBuffer[MU_MAX_PAYLOAD_LEN];
+  modem.setPacketBuffer(rxBuffer, sizeof(rxBuffer));
 
   // 各種IDとチャンネルを設定します。
   // 第2引数(saveValue)をtrueにすると、設定がモデムの不揮発性メモリに保存されます。
@@ -49,34 +56,47 @@ void setup() {
 
   // チャンネルを設定 (例: 429MHz帯のチャンネル7)
   uint8_t channel = 0x07;
-  if (modem.SetChannel(channel, false) != MU_Modem_Error::Ok) {
+  if (modem.SetChannel(channel, false) != MU_Modem_Error::Ok)
+  {
     Serial.println("チャンネルの設定に失敗しました。");
   }
-  Serial.print("チャンネルを "); Serial.print(channel, HEX); Serial.println(" に設定しました。");
+  Serial.print("チャンネルを ");
+  Serial.print(channel, HEX);
+  Serial.println(" に設定しました。");
 
   // グループIDを設定
   uint8_t groupID = 0x01;
-  if (modem.SetGroupID(groupID, false) != MU_Modem_Error::Ok) {
+  if (modem.SetGroupID(groupID, false) != MU_Modem_Error::Ok)
+  {
     Serial.println("グループIDの設定に失敗しました。");
   }
-  Serial.print("グループIDを "); Serial.print(groupID, HEX); Serial.println(" に設定しました。");
+  Serial.print("グループIDを ");
+  Serial.print(groupID, HEX);
+  Serial.println(" に設定しました。");
 
   // 目的局IDを設定 (0x00はブロードキャスト)
   uint8_t destID = 0x00;
-  if (modem.SetDestinationID(destID, false) != MU_Modem_Error::Ok) {
+  if (modem.SetDestinationID(destID, false) != MU_Modem_Error::Ok)
+  {
     Serial.println("目的局IDの設定に失敗しました。");
   }
-  Serial.print("目的局IDを "); Serial.print(destID, HEX); Serial.println(" に設定しました。");
+  Serial.print("目的局IDを ");
+  Serial.print(destID, HEX);
+  Serial.println(" に設定しました。");
 
   // 自機IDを設定
   uint8_t equipID = 0x02;
-  if (modem.SetEquipmentID(equipID, false) != MU_Modem_Error::Ok) {
+  if (modem.SetEquipmentID(equipID, false) != MU_Modem_Error::Ok)
+  {
     Serial.println("自機IDの設定に失敗しました。");
   }
-  Serial.print("自機IDを "); Serial.print(equipID, HEX); Serial.println(" に設定しました。");
+  Serial.print("自機IDを ");
+  Serial.print(equipID, HEX);
+  Serial.println(" に設定しました。");
 }
 
-void loop() {
+void loop()
+{
   // モデムの内部処理（受信データの解析など）のために、Work()を常に呼び出します。
   modem.Work();
 
@@ -92,9 +112,10 @@ void loop() {
       Serial.print("パケット受信 (");
       Serial.print(len);
       Serial.print(" バイト): ");
-      
+
       // 受信データを文字列として表示
-      for (int i = 0; i < len; i++) {
+      for (int i = 0; i < len; i++)
+      {
         Serial.write(pPayload[i]);
       }
       Serial.println();
@@ -106,11 +127,12 @@ void loop() {
 
   // --- 送信処理 (例: 5秒ごとに "Hello MU!" を送信) ---
   static uint32_t lastSendTime = 0;
-  if (millis() - lastSendTime > 5000) {
+  if (millis() - lastSendTime > 5000)
+  {
     lastSendTime = millis();
-    const char* message = "Hello MU!";
+    const char *message = "Hello MU!";
     Serial.print("メッセージを送信中: ");
     Serial.println(message);
-    modem.TransmitData((const uint8_t*)message, strlen(message));
+    modem.TransmitData((const uint8_t *)message, strlen(message));
   }
 }
