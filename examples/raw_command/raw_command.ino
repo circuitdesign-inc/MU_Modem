@@ -1,7 +1,7 @@
 /**
  * @file raw_command_example.ino
  * @brief MU-ModemライブラリのSendRawCommand関数を使用したサンプル
- * @copyright Copyright (c) 2025 CircuitDesign,Inc.
+ * @copyright Copyright (c) 2026 CircuitDesign,Inc.
  * This software is released under the MIT License.
  * http://opensource.org/licenses/mit-license.php
  *

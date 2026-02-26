@@ -1,7 +1,7 @@
 /**
  * @file relay_transmit.ino
  * @brief MU-Modemライブラリの中継機能を使用したサンプル
- * @copyright Copyright (c) 2025 CircuitDesign,Inc.
+ * @copyright Copyright (c) 2026 CircuitDesign,Inc.
  * This software is released under the MIT License.
  * http://opensource.org/licenses/mit-license.php
  *
@@ -27,7 +27,6 @@
  * 5. データを受信するとコールバック関数が呼び出され、受信内容をシリアルモニタに表示します。(中継局も宛先局もデータを受信します)
  * 6. 送信元局の場合のみ、10秒ごとにカウンター付きのメッセージを送信します。
  *    - このサンプルでは、`TransmitData()` の第3引数に `true` を指定し、モデムのルートレジスタに設定された情報を使って中継送信します。
- *    - 別のアプローチとして、`TransmitDataWithRoute()` を使用して、送信時にルート情報を直接指定することも可能です。
  *
  * このサンプルを実行するには、Arduino互換ボードのSerial1に
  * MUモデムが接続されている必要があります。

@@ -1,7 +1,7 @@
 /**
  * @file continuous_transmit.ino
  * @brief MU-Modemライブラリの連続送信機能を使用したサンプル
- * @copyright Copyright (c) 2025 CircuitDesign,Inc.
+ * @copyright Copyright (c) 2026 CircuitDesign,Inc.
  * This software is released under the MIT License.
  *
  * @details

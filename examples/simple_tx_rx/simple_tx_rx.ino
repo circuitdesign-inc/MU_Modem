@@ -1,7 +1,7 @@
 /**
  * @file simple_tx_rx.ino
  * @brief MU-Modemライブラリの基本的な送受信サンプル
- * @copyright Copyright (c) 2025 CircuitDesign,Inc.
+ * @copyright Copyright (c) 2026 CircuitDesign,Inc.
  * This software is released under the MIT License.
  * http://opensource.org/licenses/mit-license.php
  *

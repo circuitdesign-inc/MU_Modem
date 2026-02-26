@@ -26,15 +26,17 @@ https://circuitdesign-inc.github.io/MU_Modem/
 
 ## インストール
 
-1.  GitHubリポジトリから**最新のリリース**をダウンロードします。
+1.  GitHubリポジトリの **[Releases](https://github.com/circuitdesign-inc/MU_Modem/releases)** ページから、最新バージョンの **`MU_Modem-XXXX.zip`** をダウンロードします。
+    - **重要**: GitHubが自動生成する `Source code (zip)` にはサブモジュールが含まれていません。必ず **`MU_Modem-` で始まるZIPファイル** をダウンロードして使用してください。
 2.  Arduino IDEで、`スケッチ` > `ライブラリをインクルード` > `.ZIP形式のライブラリをインストール...` に移動します。
 3.  ダウンロードしたZIPファイルを選択します。
 
 > [!NOTE]
-> 本ライブラリはコードの一部にサブモジュールを使用しています。<br>
-> リポジトリのメインページから直接ZIPとしてダウンロードした場合や、単にリポジトリをクローンしただけの場合は、サブモジュールのファイルが含まれません。<br>
-> 別途、以下のサブモジュールをダウンロードして`src/common`フォルダにコピー＆ペーストするか、適切なgitコマンド(`git submodule update --init`)を使用してサブモジュールを取得してください。<br>
-> https://github.com/circuitdesign-inc/SerialModemBase
+> 本ライブラリはコードの一部にサブモジュール（`SerialModemBase`）を使用しています。
+> 開発のためにリポジトリをクローンする場合は、以下のコマンドを使用してサブモジュールを含めて取得してください：
+> ```bash
+> git clone --recursive https://github.com/circuitdesign-inc/MU_Modem.git
+> ```
 
 ## 基本的な使い方
 
