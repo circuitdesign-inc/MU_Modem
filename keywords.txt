@@ -42,8 +42,7 @@ SetRouteInfoAddMode			KEYWORD2
 setDebugStream				KEYWORD2
 SoftReset					KEYWORD2
 TransmitData				KEYWORD2
-TransmitDataFireAndForget	KEYWORD2
-TransmitDataWithRoute		KEYWORD2
+TransmitDataAsync			KEYWORD2
 Work						KEYWORD2
 
 #######################################

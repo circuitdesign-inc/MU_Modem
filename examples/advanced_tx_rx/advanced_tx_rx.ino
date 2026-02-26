@@ -1,7 +1,7 @@
 /**
  * @file advanced_tx_rx_example.ino
  * @brief MU-Modemライブラリの高度な送受信サンプル
- * @copyright Copyright (c) 2025 CircuitDesign,Inc.
+ * @copyright Copyright (c) 2026 CircuitDesign,Inc.
  * This software is released under the MIT License.
  * http://opensource.org/licenses/mit-license.php
  *
@@ -44,40 +44,34 @@ int16_t g_lastRssi = 0;
  * @brief モデムからの非同期イベントを処理するコールバック関数
  *
  * データ受信時や非同期コマンドの応答受信時にライブラリから自動的に呼び出されます。
- * @param error エラーコード
- * @param responseType 応答の種類
- * @param value 応答に含まれる数値（RSSIなど）
- * @param pPayload 受信したデータのペイロードへのポインタ
- * @param len ペイロードの長さ (バイト単位)
- * @param pRouteInfo 受信パケットに含まれるルート情報へのポインタ
- * @param numRouteNodes ルート情報のノード数
+ * @param event イベント情報構造体
  */
-void modemCallback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t value, const uint8_t *pPayload, uint16_t len, const uint8_t* pRouteInfo, uint8_t numRouteNodes)
+void modemCallback(const MU_Modem_Event &event)
 {
   // データ受信イベントかを確認
-  if (responseType == MU_Modem_Response::DataReceived)
+  if (event.type == MU_Modem_Response::DataReceived)
   {
-    if (error == MU_Modem_Error::Ok)
+    if (event.error == MU_Modem_Error::Ok)
     {
       Serial.println("\n[コールバック] データを受信しました！");
       // loop()で処理するために、受信データをグローバル変数にコピーしてフラグを立てる
-      if (len > 0 && len <= sizeof(g_receivedPayload))
+      if (event.payloadLen > 0 && event.payloadLen <= sizeof(g_receivedPayload))
       {
-        memcpy(g_receivedPayload, pPayload, len);
-        g_receivedLen = len;
-        g_lastRssi = value; // データ受信時のRSSI値はvalueパラメータで渡される
+        memcpy(g_receivedPayload, event.pPayload, event.payloadLen);
+        g_receivedLen = (uint8_t)event.payloadLen;
+        g_lastRssi = (int16_t)event.value; // データ受信時のRSSI値はvalueパラメータで渡される
         g_packetReceived = true;
       }
     }
     else
     {
-      Serial.printf("[コールバック] データ受信エラー: %d\n", (int)error);
+      Serial.printf("[コールバック] データ受信エラー: %d\n", (int)event.error);
     }
   }
   // 他の非同期応答(RSSI取得など)もここで処理可能
   else
   {
-    Serial.printf("[コールバック] 非同期イベント受信 Type: %d, Error: %d, Value: %ld\n", (int)responseType, (int)error, value);
+    Serial.printf("[コールバック] 非同期イベント受信 Type: %d, Error: %d, Value: %ld\n", (int)event.type, (int)event.error, event.value);
   }
 }
 
@@ -183,6 +177,10 @@ void loop() {
     const int MAX_RETRIES = 3;
     for (int i = 0; i < MAX_RETRIES; i++)
     {
+      // ここでは同期型の TransmitData を使用しています。
+      // もし TransmitDataAsync (非同期型) を使用する場合は、
+      // 送信完了コールバックまで 'message' バッファが破棄されないよう
+      // static修飾子を付けるか、グローバル変数にする必要があります。
       MU_Modem_Error err = modem.TransmitData((const uint8_t*)message, strlen(message));
 
       if (err == MU_Modem_Error::Ok)

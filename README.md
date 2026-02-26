@@ -26,9 +26,17 @@ https://circuitdesign-inc.github.io/MU_Modem/
 
 ## インストール
 
-1.  GitHubリポジトリから最新のリリースをダウンロードします。
+1.  GitHubリポジトリの **[Releases](https://github.com/circuitdesign-inc/MU_Modem/releases)** ページから、最新バージョンの **`MU_Modem-XXXX.zip`** をダウンロードします。
+    - **重要**: GitHubが自動生成する `Source code (zip)` にはサブモジュールが含まれていません。必ず **`MU_Modem-` で始まるZIPファイル** をダウンロードして使用してください。
 2.  Arduino IDEで、`スケッチ` > `ライブラリをインクルード` > `.ZIP形式のライブラリをインストール...` に移動します。
 3.  ダウンロードしたZIPファイルを選択します。
+
+> [!NOTE]
+> 本ライブラリはコードの一部にサブモジュール（`SerialModemBase`）を使用しています。
+> 開発のためにリポジトリをクローンする場合は、以下のコマンドを使用してサブモジュールを含めて取得してください：
+> ```bash
+> git clone --recursive https://github.com/circuitdesign-inc/MU_Modem.git
+> ```
 
 ## 基本的な使い方
 
@@ -41,29 +49,28 @@ MUモデムをArduinoなどのマイクロコントローラと接続するた�
 
 最低限、以下の5つの端子を接続する必要があります。
 
-| MU端子 | 接続先 (Arduino) | 説明 |
-| :---: | :---: | :--- |
-| `VCC` | 3.0V ~ 5.0V | 安定化された電源を接続します。Arduinoの`5V`または`3.3V`ピンに接続します。 |
-| `GND` | `GND` | グランドを接続します。 |
-| `TXD` | Arduinoの `RX` | MUモデムの送信(TXD)をArduinoの受信(RX)に接続します。コントロール電圧はVCCに依存します。 |
-| `RXD` | Arduinoの `TX` | MUモデムの受信(RXD)をArduinoの送信(TX)に接続します。コントロール電圧はVCCに依存します。|
-| `CTS` | `GND`  | MUモデムのハードウェアフロー制御用の入力です。HIGHの時はビジーと判断しTXDからデータを送信しません。（内部でプルアップされています）|
+| MU端子 | 接続先 (Arduino) | 説明                                                                                                                                |
+| :----: | :--------------: | :---------------------------------------------------------------------------------------------------------------------------------- |
+| `VCC`  |   3.0V ~ 5.0V    | 安定化された電源を接続します。Arduinoの`5V`または`3.3V`ピンに接続します。                                                           |
+| `GND`  |      `GND`       | グランドを接続します。                                                                                                              |
+| `TXD`  |  Arduinoの `RX`  | MUモデムの送信(TXD)をArduinoの受信(RX)に接続します。コントロール電圧はVCCに依存します。                                             |
+| `RXD`  |  Arduinoの `TX`  | MUモデムの受信(RXD)をArduinoの送信(TX)に接続します。コントロール電圧はVCCに依存します。                                             |
+| `CTS`  |      `GND`       | MUモデムのハードウェアフロー制御用の入力です。HIGHの時はビジーと判断しTXDからデータを送信しません。（内部でプルアップされています） |
 
-**【重要】**
-*   **モード設定**: `MODE` (10番ピン) は**コマンドモード**に設定する必要があります。`VCC`と同じ電圧（Highレベル）に接続してください。
-*   **ロジックレベル**: MUモデムのロジックレベルは電源電圧(VCC)に依存します。ArduinoとMUモデムの電源電圧を合わせてください（例: どちらも5V、またはどちらも3.3V）。電圧が異なる場合は、ロジックレベル変換IC等が必要です。
-*   **未使用端子**: 使用しない端子はデータシートの指示に従い、オープン（未接続）にしてください。
+> [!IMPORTANT]
+> *   **ロジックレベル**: MUモデムのロジックレベルは電源電圧(VCC)に依存します。ArduinoとMUモデムの電源電圧を合わせてください（例: どちらも5V、またはどちらも3.3V）。電圧が異なる場合は、ロジックレベル変換IC等が必要です。
+> *   **未使用端子**: 使用しない端子はデータシートの指示に従い、オープン（未接続）にしてください。
 
 #### オプションの接続
 
 必要に応じて、以下の端子も接続、拡張できます。
 
-| MU端子 | 接続先 (Arduino) | 説明 |
-| :---: | :---: | :--- |
-| `RTS` | Arduinoのデジタル入力ピン | ハードウェアフロー制御用の出力です。モデムがデータ受信可能かを示します。 |
-| `CTS` | Arduinoのデジタル出力ピン | ハードウェアフロー制御用の入力です。モデムにデータ送信を許可/禁止します。 |
-| `TX-LED` | LED | データ送信中に点灯するLEDを接続できます。電流制限抵抗が必要です。 |
-| `RX-LED` | LED | データ受信中に点灯するLEDを接続できます。電流制限抵抗が必要です。 |
+|  MU端子  |     接続先 (Arduino)      | 説明                                                                      |
+| :------: | :-----------------------: | :------------------------------------------------------------------------ |
+|  `RTS`   | Arduinoのデジタル入力ピン | ハードウェアフロー制御用の出力です。モデムがデータ受信可能かを示します。  |
+|  `CTS`   | Arduinoのデジタル出力ピン | ハードウェアフロー制御用の入力です。モデムにデータ送信を許可/禁止します。 |
+| `TX-LED` |            LED            | データ送信中に点灯するLEDを接続できます。電流制限抵抗が必要です。         |
+| `RX-LED` |            LED            | データ受信中に点灯するLEDを接続できます。電流制限抵抗が必要です。         |
 
 **注意**: 本ライブラリはハードウェアフロー制御(`RTS`/`CTS`)を標準では使用しません。使用する場合は、ご自身で制御ロジックを実装する必要があります。
 
@@ -79,14 +86,14 @@ MUモデムをArduinoなどのマイクロコントローラと接続するた�
 MU_Modem modem;
 
 // データ受信時に呼び出されるコールバック関数
-void modemCallback(MU_Modem_Error error, MU_Modem_Response responseType, int32_t value, const uint8_t *pPayload, uint16_t len, const uint8_t* pRouteInfo, uint8_t numRouteNodes)
+void modemCallback(const MU_Modem_Event &event)
 {
-  if (responseType == MU_Modem_Response::DataReceived && error == MU_Modem_Error::Ok)
+  if (event.type == MU_Modem_Response::DataReceived && event.error == MU_Modem_Error::Ok)
   {
     Serial.println("\n--- データ受信 ---");
-    Serial.printf("RSSI: %d dBm, 長さ: %u バイト\n", (int16_t)value, len);
+    Serial.printf("RSSI: %d dBm, 長さ: %u バイト\n", (int16_t)event.value, event.payloadLen);
     Serial.print("ペイロード: ");
-    Serial.write(pPayload, len);
+    Serial.write(event.pPayload, event.payloadLen);
     Serial.println("\n--------------------");
   }
 }
@@ -155,6 +162,29 @@ build_flags = -D ENABLE_MU_MODEM_DEBUG
 ```cpp
 // デバッグの出力先を設定
 modem.setDebugStream(&Serial);
+```
+
+## 非同期送信時の重要な注意点
+
+`TransmitDataAsync()` を使用する場合、以下の点に十分注意してください。
+
+- **バッファの有効性**: この関数は内部でデータのコピーを行わず、渡されたポインタをそのまま保持します。そのため、送信が実際に完了するまで（コールバックが呼び出されるまで）、提供したバッファの内容が書き換えられたり、スコープから外れて破棄されたりしてはいけません。
+- **推奨される対策**:
+    - 送信データには `static` 変数またはグローバル変数を使用してください。
+    - コールバックで `TxComplete` または `TxFailed` を受け取るまで、そのバッファを再利用しないでください。
+
+```cpp
+// 悪い例（NG）
+void sendData() {
+    uint8_t data[] = {1, 2, 3}; 
+    modem.TransmitDataAsync(data, 3);
+} // 関数を抜けると data が破棄され、不正なデータが送信される可能性がある
+
+// 良い例（OK）
+void sendData() {
+    static uint8_t data[] = {1, 2, 3}; // 静的バッファ
+    modem.TransmitDataAsync(data, 3);
+}
 ```
 
 ## License
