@@ -1,19 +1,12 @@
 var searchData=
 [
-  ['getallchannelsrssi_0',['GetAllChannelsRssi',['../classMU__Modem.html#a676b3bc11696516c1fc1ed6cd8b8534a',1,'MU_Modem']]],
-  ['getallchannelsrssiasync_1',['GetAllChannelsRssiAsync',['../classMU__Modem.html#aab5450979de9798b19fd18df0f9bc60a',1,'MU_Modem']]],
-  ['getautoreplyroute_2',['GetAutoReplyRoute',['../classMU__Modem.html#acd689f0e43071d63f4fcd91dcf083bda',1,'MU_Modem']]],
-  ['getchannel_3',['GetChannel',['../classMU__Modem.html#a5f55aebc00f928d3dc800f15647bf35f',1,'MU_Modem']]],
-  ['getdestinationid_4',['GetDestinationID',['../classMU__Modem.html#a6e447bf28d31672759cae02660bbccf7',1,'MU_Modem']]],
-  ['getequipmentid_5',['GetEquipmentID',['../classMU__Modem.html#a0e842dfdf35828a83be18b53074d3029',1,'MU_Modem']]],
-  ['getgroupid_6',['GetGroupID',['../classMU__Modem.html#a78065dc4a20ad3c5cc33bc9dc9404b21',1,'MU_Modem']]],
-  ['getpacket_7',['GetPacket',['../classMU__Modem.html#ad9e3a2f8fcbcf88beba4ca9026f57e00',1,'MU_Modem']]],
-  ['getpower_8',['GetPower',['../classMU__Modem.html#ac92d5ebc0102fb13cea3196a6f488617',1,'MU_Modem']]],
-  ['getrouteinfo_9',['GetRouteInfo',['../classMU__Modem.html#a061c292c53a9836c58940100b10e2c85',1,'MU_Modem']]],
-  ['getrouteinfoaddmode_10',['GetRouteInfoAddMode',['../classMU__Modem.html#a939cecd600fc9617c796620a1e321827',1,'MU_Modem']]],
-  ['getrssicurrentchannel_11',['GetRssiCurrentChannel',['../classMU__Modem.html#a99aee3a6ad995090f45ba66c2da7a9fe',1,'MU_Modem']]],
-  ['getrssicurrentchannelasync_12',['GetRssiCurrentChannelAsync',['../classMU__Modem.html#a5ee2a353e22a1f2b6684fe7a26835d6b',1,'MU_Modem']]],
-  ['getserialnumber_13',['GetSerialNumber',['../classMU__Modem.html#a00e6c9aef11ea3cf5ccdd8949a460071',1,'MU_Modem']]],
-  ['getserialnumberasync_14',['GetSerialNumberAsync',['../classMU__Modem.html#a34f7443caf4583052901bc266e5e162b',1,'MU_Modem']]],
-  ['getuserid_15',['GetUserID',['../classMU__Modem.html#ab2945c1e9dbdec702b9c24fa1f041f25',1,'MU_Modem']]]
+  ['cd_5fcmd_5fwrite_5fsuffix_0',['CD_CMD_WRITE_SUFFIX',['../classSerialModemBase.html#ab774f2f050e3e11d5ab3c88eaabaf916',1,'SerialModemBase']]],
+  ['cd_5fval_5foff_1',['CD_VAL_OFF',['../classSerialModemBase.html#aa89355ce4236571ae431f842acc497bc',1,'SerialModemBase']]],
+  ['cd_5fval_5fon_2',['CD_VAL_ON',['../classSerialModemBase.html#aa7ba8a282229b25cd00193355dc79dad',1,'SerialModemBase']]],
+  ['cd_5fwrite_5fok_5fresponse_3',['CD_WRITE_OK_RESPONSE',['../classSerialModemBase.html#acec4c7a18d9bf7eb0287214c31df2fa0',1,'SerialModemBase']]],
+  ['cd_5fwrite_5fok_5fresponse_5flen_4',['CD_WRITE_OK_RESPONSE_LEN',['../classSerialModemBase.html#a11b99e1c6a57e007ffb2251de4a58ff6',1,'SerialModemBase']]],
+  ['checkcarriersense_5',['CheckCarrierSense',['../classMU__Modem.html#a35bd7d9333ba76856792896e0b48b833',1,'MU_Modem']]],
+  ['clearrouteinfo_6',['ClearRouteInfo',['../classMU__Modem.html#a8173f2e03290b70d5a4f0af212e9bddc',1,'MU_Modem']]],
+  ['clearunreadbyte_7',['clearUnreadByte',['../classSerialModemBase.html#a72c19051d58c52cde545f5d9b7a406e2',1,'SerialModemBase']]],
+  ['cmdbuffer_8',['cmdBuffer',['../structModemCommand.html#aebf5efd384f2387eef79ba3ab178a606',1,'ModemCommand']]]
 ];

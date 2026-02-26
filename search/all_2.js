@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['deletepacket_0',['DeletePacket',['../classMU__Modem.html#ae58b98368d24ec97d0f9a4be0d9d6b4e',1,'MU_Modem']]]
+  ['begin_0',['begin',['../classMU__Modem.html#a69f83020f2ccc23ce5601003b34269e8',1,'MU_Modem']]]
 ];

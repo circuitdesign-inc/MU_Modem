@@ -1,6 +1,25 @@
 var searchData=
 [
-  ['transmitdata_0',['TransmitData',['../classMU__Modem.html#a4073269482792c7909eb3f063e92328e',1,'MU_Modem']]],
-  ['transmitdatafireandforget_1',['TransmitDataFireAndForget',['../classMU__Modem.html#a052a5e7245e7b7cdc5f1c6179a63de3a',1,'MU_Modem']]],
-  ['transmitdatawithroute_2',['TransmitDataWithRoute',['../classMU__Modem.html#a33210245d84e0d91298abaa5296456d7',1,'MU_Modem']]]
+  ['getallchannelsrssi_0',['GetAllChannelsRssi',['../classMU__Modem.html#a676b3bc11696516c1fc1ed6cd8b8534a',1,'MU_Modem']]],
+  ['getallchannelsrssiasync_1',['GetAllChannelsRssiAsync',['../classMU__Modem.html#aab5450979de9798b19fd18df0f9bc60a',1,'MU_Modem']]],
+  ['getautoreplyroute_2',['GetAutoReplyRoute',['../classMU__Modem.html#acd689f0e43071d63f4fcd91dcf083bda',1,'MU_Modem']]],
+  ['getboolvalue_3',['getBoolValue',['../classSerialModemBase.html#a037bdc3e12c26a97b58d43e178d61005',1,'SerialModemBase']]],
+  ['getbytevalue_4',['getByteValue',['../classSerialModemBase.html#a0376336f4d71edfd68fd9e16bd2bb356',1,'SerialModemBase']]],
+  ['getchannel_5',['GetChannel',['../classMU__Modem.html#a5f55aebc00f928d3dc800f15647bf35f',1,'MU_Modem']]],
+  ['getdestinationid_6',['GetDestinationID',['../classMU__Modem.html#a6e447bf28d31672759cae02660bbccf7',1,'MU_Modem']]],
+  ['getequipmentid_7',['GetEquipmentID',['../classMU__Modem.html#a0e842dfdf35828a83be18b53074d3029',1,'MU_Modem']]],
+  ['getgroupid_8',['GetGroupID',['../classMU__Modem.html#a78065dc4a20ad3c5cc33bc9dc9404b21',1,'MU_Modem']]],
+  ['getlastcommandresult_9',['getLastCommandResult',['../classSerialModemBase.html#ab502aab6b4954bb68da44cf7b129459d',1,'SerialModemBase']]],
+  ['getlogprefix_10',['getLogPrefix',['../classMU__Modem.html#a648cd672af4dc560d78c4bbc4bda3f00',1,'MU_Modem::getLogPrefix()'],['../classSerialModemBase.html#a4f23867fecd9dd11d1c7f3abaaaf6a9f',1,'SerialModemBase::getLogPrefix()']]],
+  ['getpacket_11',['GetPacket',['../classMU__Modem.html#ad9e3a2f8fcbcf88beba4ca9026f57e00',1,'MU_Modem']]],
+  ['getpower_12',['GetPower',['../classMU__Modem.html#ac92d5ebc0102fb13cea3196a6f488617',1,'MU_Modem']]],
+  ['getqueuecount_13',['getQueueCount',['../classSerialModemBase.html#ab9c4b2aad658674f0cf16f0b0d12475d',1,'SerialModemBase']]],
+  ['getrouteinfo_14',['GetRouteInfo',['../classMU__Modem.html#a061c292c53a9836c58940100b10e2c85',1,'MU_Modem']]],
+  ['getrouteinfoaddmode_15',['GetRouteInfoAddMode',['../classMU__Modem.html#a939cecd600fc9617c796620a1e321827',1,'MU_Modem']]],
+  ['getrssicurrentchannel_16',['GetRssiCurrentChannel',['../classMU__Modem.html#a99aee3a6ad995090f45ba66c2da7a9fe',1,'MU_Modem']]],
+  ['getrssicurrentchannelasync_17',['GetRssiCurrentChannelAsync',['../classMU__Modem.html#a5ee2a353e22a1f2b6684fe7a26835d6b',1,'MU_Modem']]],
+  ['getrxbuffer_18',['getRxBuffer',['../classSerialModemBase.html#a7febfbea4cd126a4952f0e8d9e927b95',1,'SerialModemBase']]],
+  ['getrxindex_19',['getRxIndex',['../classSerialModemBase.html#afdaea338042a56fccd7e4944c1daeb6f',1,'SerialModemBase']]],
+  ['getserialnumber_20',['GetSerialNumber',['../classMU__Modem.html#a00e6c9aef11ea3cf5ccdd8949a460071',1,'MU_Modem']]],
+  ['getuserid_21',['GetUserID',['../classMU__Modem.html#ab2945c1e9dbdec702b9c24fa1f041f25',1,'MU_Modem']]]
 ];
