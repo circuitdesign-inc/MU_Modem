@@ -1,0 +1,46 @@
+name: Release Assets
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - '[0-9]*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Release ZIP
+        run: |
+          # Arduinoライブラリのディレクトリ構造に合わせてZIPを作成
+          export FOLDER_NAME="MU_Modem"
+          mkdir $FOLDER_NAME
+          
+          # サブモジュールを含め、配布に不要なファイルを除外してコピー
+          rsync -a . $FOLDER_NAME/ \
+            --exclude ".git*" \
+            --exclude ".github" \
+            --exclude "$FOLDER_NAME" \
+            --exclude "Doxyfile" \
+          
+          # ZIP圧縮
+          zip -r "MU_Modem-${{ steps.get_version.outputs.VERSION }}.zip" $FOLDER_NAME
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: MU_Modem-${{ steps.get_version.outputs.VERSION }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
