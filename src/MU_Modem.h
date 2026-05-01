@@ -18,7 +18,7 @@
 
 #pragma once
 #include <Arduino.h>
-#include "common/SerialModemBase.h"
+#include <SerialModemBase.h>
 
 /**
  * @brief Default baud rate for the MU modem.
@@ -132,6 +132,8 @@ typedef void (*MU_Modem_AsyncCallback)(const MU_Modem_Event &event);
 class MU_Modem : public SerialModemBase
 {
 public:
+    MU_Modem() : SerialModemBase("[MU Modem] ") {}
+
     /**
      * @brief Initializes the modem driver.
      * @param pUart A reference to the Stream object (e.g., Serial1).
@@ -440,7 +442,6 @@ protected:
     virtual ModemParseResult parse() override;
     virtual void onRxDataReceived() override;
     virtual void onCommandComplete(ModemError result) override;
-    virtual const char *getLogPrefix() const override { return "[MU Modem] "; }
 
 private:
     void m_ResetParser();
