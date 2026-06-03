@@ -119,6 +119,13 @@ static constexpr char MU_GET_ROUTE_INFO_ADD_MODE_RESPONSE_PREFIX[] = "*RI=";
 // Route Information Option in *DR/*DS/*DC
 static constexpr char MU_ROUTE_INFO_OPTION_PREFIX[] = "/R";
 
+// --- Circuit Design modem protocol strings (local to this driver) ---
+static constexpr char MU_NVM_SAVE_RESPONSE[] = "*WR=PS";
+static constexpr size_t MU_NVM_SAVE_RESPONSE_LEN = 6;
+static constexpr char MU_CMD_WRITE_SUFFIX[] = "/W";
+static constexpr char MU_VAL_ON[] = "ON";
+static constexpr char MU_VAL_OFF[] = "OF";
+
 // --- Constants for Parser ---
 static constexpr size_t MU_DR_PREFIX_LEN = 4;     // "*DR="
 static constexpr size_t MU_DS_PREFIX_LEN = 4;     // "*DS="
@@ -132,6 +139,8 @@ static constexpr uint32_t MU_LBT_CHECK_TIMEOUT_MS = 60;
 MU_Modem_Error MU_Modem::begin(Stream &pUart, MU_Modem_FrequencyModel frequencyModel, MU_Modem_AsyncCallback pCallback)
 {
     initSerial(pUart);
+    setNvmConfig(MU_NVM_SAVE_RESPONSE, MU_NVM_SAVE_RESPONSE_LEN,
+                 MU_CMD_WRITE_SUFFIX, MU_VAL_ON, MU_VAL_OFF);
     m_frequencyModel = frequencyModel;
     m_pCallback = pCallback;
     m_asyncExpectedResponse = MU_Modem_Response::Idle;
@@ -197,8 +206,9 @@ MU_Modem_Error MU_Modem::TransmitData(const uint8_t *pMsg, uint8_t len, bool use
     appendHex2(cmdHeader, p, len);
 
     // 2. Queue Async Command (Wait up to 2000ms for *DT response)
-    const char *suffix = useRouteRegister ? MU_ROUTE_INFO_OPTION_PREFIX : nullptr;
-    MU_Modem_Error err = enqueueTxCommand(cmdHeader, pMsg, len, suffix, 2000);
+    // Build terminator: "/R\r\n" when using route register, otherwise "\r\n"
+    const char *txSuffix = useRouteRegister ? "/R\r\n" : "\r\n";
+    MU_Modem_Error err = enqueueTxCommand(cmdHeader, pMsg, len, txSuffix, 2000);
     if (err != MU_Modem_Error::Ok)
     {
         m_blockAsyncCallback = false;
@@ -252,8 +262,8 @@ MU_Modem_Error MU_Modem::TransmitDataAsync(const uint8_t *pMsg, uint8_t len, boo
     appendHex2(cmdHeader, p, len);
 
     // Just queue and return. Result will be delivered via Callback (TxComplete / TxFailed)
-    const char *suffix = useRouteRegister ? MU_ROUTE_INFO_OPTION_PREFIX : nullptr;
-    return enqueueTxCommand(cmdHeader, pMsg, len, suffix, 2000);
+    const char *txSuffix = useRouteRegister ? "/R\r\n" : "\r\n";
+    return enqueueTxCommand(cmdHeader, pMsg, len, txSuffix, 2000);
 }
 
 // --- Parser Implementation ---
@@ -268,12 +278,9 @@ void MU_Modem::m_ResetParser()
 
 ModemParseResult MU_Modem::parse()
 {
-    while (true)
+    while (_uart->available() || _oneByteBuf != -1)
     {
-        int c_int = readByte();
-        if (c_int == -1)
-            break;
-        uint8_t c = static_cast<uint8_t>(c_int);
+        uint8_t c = readByte();
 
         switch (m_parserState)
         {
@@ -931,7 +938,7 @@ MU_Modem_Error MU_Modem::SetRouteInfo(const uint8_t *pRouteInfo, uint8_t numNode
             p = appendStr(cmdBuffer, p, ",");
     }
     if (saveValue)
-        p = appendStr(cmdBuffer, p, CD_CMD_WRITE_SUFFIX);
+        p = appendStr(cmdBuffer, p, MU_CMD_WRITE_SUFFIX);
     appendStr(cmdBuffer, p, "\r\n");
 
     MU_Modem_Error err = enqueueCommand(cmdBuffer, saveValue ? CommandType::NvmSave : CommandType::Simple, 1500);
@@ -946,7 +953,7 @@ MU_Modem_Error MU_Modem::ClearRouteInfo(bool saveValue)
     char *p = appendStr(cmdBuffer, cmdBuffer, MU_CMD_ROUTE);
     p = appendStr(cmdBuffer, p, "NA");
     if (saveValue)
-        p = appendStr(cmdBuffer, p, CD_CMD_WRITE_SUFFIX);
+        p = appendStr(cmdBuffer, p, MU_CMD_WRITE_SUFFIX);
     appendStr(cmdBuffer, p, "\r\n");
     MU_Modem_Error err = enqueueCommand(cmdBuffer, saveValue ? CommandType::NvmSave : CommandType::Simple, 1500);
     if (err != MU_Modem_Error::Ok)

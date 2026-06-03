@@ -18,7 +18,7 @@
 
 #pragma once
 #include <Arduino.h>
-#include "common/SerialModemBase.h"
+#include <SerialModemBase.h>
 
 /**
  * @brief Default baud rate for the MU modem.
@@ -37,61 +37,22 @@ static constexpr uint8_t MU_MAX_PAYLOAD_LEN = 255;      //!< Maximum payload and
 static constexpr uint8_t MU_MAX_ROUTE_NODES_IN_DR = 12; //!< Max route nodes in a *DR response (src + 10 relays + dest)
 
 /**
- * @enum MU_Modem_Response
- * @brief Defines the types of responses from the modem.
+ * @brief Response/event type used by MU_Modem callbacks.
+ *
+ * Aliased to the unified \ref ModemResponse defined in SerialModemBase.h
+ * so callbacks can be shared across modem drivers.
  */
-enum class MU_Modem_Response
-{
-    Idle,         //!< No message received or expected.
-    ParseError,   //!< Garbage characters received.
-    Timeout,      //!< No response received within the timeout period.
-    TxComplete,   //!< Transmission accepted (*DT response received)
-    TxFailed,     //!< Transmission failed (LBT Error or NACK)
-    DataReceived, //!< Data packet received
-    // Serial command responses
-    ShowMode,           //!< Response indicating the modem's mode.
-    SaveValue,          //!< Response confirming a value has been written to NVM ("*WR=PS").
-    Channel,            //!< Response related to the frequency channel ("*CH...").
-    SerialNumber,       //!< Response containing the device's serial number ("*SN=...").
-    RssiCurrentChannel, //!< Response containing the current RSSI value ("*RA=...").
-    RssiAllChannels,    //!< Response containing RSSI values for all channels ("*RC=...").
-    RouteInfo,          //!< Response containing route information ("*RT=...").
-    GroupID,            //!< Response related to Group ID ("*GI...").
-    EquipmentID,        //!< Response related to Equipment ID ("*EI...").
-    DestinationID,      //!< Response related to Destination ID ("*DI...").
-    GenericResponse,    //!< Generic response received from SendRawCommand.
-};
+using MU_Modem_Response = ModemResponse;
 
 /**
- * @struct MU_Modem_Event
- * @brief Structure containing information about an asynchronous event or response.
+ * @brief Event structure delivered to MU_Modem async callbacks.
+ *
+ * Aliased to the unified \ref ModemEvent defined in SerialModemBase.h.
  */
-struct MU_Modem_Event
-{
-    ModemError error;           //!< Status of the operation.
-    MU_Modem_Response type;     //!< Type of response or event.
-    int32_t value;              //!< Numerical value (RSSI, Serial Number, etc.)
-    const uint8_t *pPayload;    //!< Pointer to payload (for DataReceived).
-    uint16_t payloadLen;        //!< Length of payload.
-    const uint8_t *pRouteNodes; //!< Pointer to route info (for DataReceived).
-    uint8_t numRouteNodes;      //!< Number of route nodes.
-
-    // --- Constructors ---
-    // 1. Default: Initialize everything to zero/null for safety
-    MU_Modem_Event() : error(ModemError::Ok), type(MU_Modem_Response::Idle), value(0), pPayload(nullptr), payloadLen(0), pRouteNodes(nullptr), numRouteNodes(0) {}
-
-    // 2. Helper for simple status events
-    MU_Modem_Event(ModemError err, MU_Modem_Response t)
-        : error(err), type(t), value(0), pPayload(nullptr), payloadLen(0), pRouteNodes(nullptr), numRouteNodes(0) {}
-
-    // 3. Helper for events with a value (RSSI, Channel, etc.)
-    MU_Modem_Event(ModemError err, MU_Modem_Response t, int32_t val)
-        : error(err), type(t), value(val), pPayload(nullptr), payloadLen(0), pRouteNodes(nullptr), numRouteNodes(0) {}
-};
+using MU_Modem_Event = ModemEvent;
 
 /**
- * @enum MU_Modem_Error
- * @brief Defines API level error codes.
+ * @brief Error type used by MU_Modem APIs.
  */
 using MU_Modem_Error = ModemError;
 
@@ -121,9 +82,11 @@ enum class MU_Modem_ParserState
 
 /**
  * @brief Callback function type for asynchronous operations and received data events.
- * @param event Structure containing event details.
+ *
+ * Aliased to the unified \ref ModemAsyncCallback. A single callback function can
+ * therefore be registered for both MU and MLR modems if the application uses both.
  */
-typedef void (*MU_Modem_AsyncCallback)(const MU_Modem_Event &event);
+using MU_Modem_AsyncCallback = ModemAsyncCallback;
 
 /**
  * @class MU_Modem
@@ -132,6 +95,8 @@ typedef void (*MU_Modem_AsyncCallback)(const MU_Modem_Event &event);
 class MU_Modem : public SerialModemBase
 {
 public:
+    MU_Modem() : SerialModemBase("[MU Modem] ") {}
+
     /**
      * @brief Initializes the modem driver.
      * @param pUart A reference to the Stream object (e.g., Serial1).
@@ -440,7 +405,6 @@ protected:
     virtual ModemParseResult parse() override;
     virtual void onRxDataReceived() override;
     virtual void onCommandComplete(ModemError result) override;
-    virtual const char *getLogPrefix() const override { return "[MU Modem] "; }
 
 private:
     void m_ResetParser();
