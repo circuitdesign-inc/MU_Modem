@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['flushgarbage_0',['flushGarbage',['../classSerialModemBase.html#ae4f93fac59aa23311a1ac005d5d9248f',1,'SerialModemBase']]]
+  ['mu_5fmodem_0',['MU_Modem',['../classMU__Modem.html#a5f5bcf6e6bf8ef7f6d10c4450940769a',1,'MU_Modem']]]
 ];

@@ -1,9 +1,17 @@
 var searchData=
 [
-  ['initserial_0',['initSerial',['../classSerialModemBase.html#a90001afb9989a22eef12a7bec84c0b92',1,'SerialModemBase']]],
-  ['isidle_1',['isIdle',['../classSerialModemBase.html#a2742096334dffac539fec2245d06b0e8',1,'SerialModemBase']]],
-  ['islastcommandcomplete_2',['isLastCommandComplete',['../classSerialModemBase.html#a569e64d66f8153d2ff5d1132f6113aa1',1,'SerialModemBase']]],
-  ['isqueueempty_3',['isQueueEmpty',['../classSerialModemBase.html#aa7b88289f19d571377fcd8f39a010d1d',1,'SerialModemBase']]],
-  ['isqueuefull_4',['isQueueFull',['../classSerialModemBase.html#a6b1dc4f0421d790972c5a9e61f577207',1,'SerialModemBase']]],
-  ['istimeout_5',['isTimeout',['../classSerialModemBase.html#aecf4e795e387b3b1e808cd007b0e042d',1,'SerialModemBase']]]
+  ['sendrawcommand_0',['SendRawCommand',['../classMU__Modem.html#a4a9f2d845670cf4d4ba40b19dd390062',1,'MU_Modem']]],
+  ['setaddrssivalue_1',['SetAddRssiValue',['../classMU__Modem.html#acb2dc78e8b6a400343cec344b45727e2',1,'MU_Modem']]],
+  ['setasynccallback_2',['SetAsyncCallback',['../classMU__Modem.html#aefad1a5868804dcaac32593c3880beb4',1,'MU_Modem']]],
+  ['setautoreplyroute_3',['SetAutoReplyRoute',['../classMU__Modem.html#a02f7989b9881a44f478ea4f3866e6042',1,'MU_Modem']]],
+  ['setbaudrate_4',['SetBaudRate',['../classMU__Modem.html#a53bb2018225a6207d8a774eb5ce1220c',1,'MU_Modem']]],
+  ['setchannel_5',['SetChannel',['../classMU__Modem.html#a6b7eba13080e003515573911fcf5dc72',1,'MU_Modem']]],
+  ['setdestinationid_6',['SetDestinationID',['../classMU__Modem.html#a76d2dcbd26f5e78f8a831875124bfaa4',1,'MU_Modem']]],
+  ['setequipmentid_7',['SetEquipmentID',['../classMU__Modem.html#ac0a1f04cce8a4ec97c5630f799197829',1,'MU_Modem']]],
+  ['setgroupid_8',['SetGroupID',['../classMU__Modem.html#acf73a7d66cebcfecc6c1a1f3705cefdc',1,'MU_Modem']]],
+  ['setpacketbuffer_9',['setPacketBuffer',['../classMU__Modem.html#ad75244d356cac51e2d1f13bc86d7265f',1,'MU_Modem']]],
+  ['setpower_10',['SetPower',['../classMU__Modem.html#ae6670c9ecc6d112775659a57f6b47c39',1,'MU_Modem']]],
+  ['setrouteinfo_11',['SetRouteInfo',['../classMU__Modem.html#add62e145605088cd858a71b523f92bba',1,'MU_Modem']]],
+  ['setrouteinfoaddmode_12',['SetRouteInfoAddMode',['../classMU__Modem.html#af2a3911d2ae1d8a2746c84b6e772091a',1,'MU_Modem']]],
+  ['softreset_13',['SoftReset',['../classMU__Modem.html#ae7042ada21d179d3bb29c71b6db47875',1,'MU_Modem']]]
 ];

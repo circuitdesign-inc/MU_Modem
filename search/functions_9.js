@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['mu_5fmodem_5fevent_0',['MU_Modem_Event',['../structMU__Modem__Event.html#a88e64db3821c46c9ad634c0ae686d463',1,'MU_Modem_Event::MU_Modem_Event()'],['../structMU__Modem__Event.html#a929ee2a06ef997b8ce7b3bddec5f15c1',1,'MU_Modem_Event::MU_Modem_Event(ModemError err, MU_Modem_Response t)'],['../structMU__Modem__Event.html#a2fe5dc1fbdfa3ae80da57a903ffabad0',1,'MU_Modem_Event::MU_Modem_Event(ModemError err, MU_Modem_Response t, int32_t val)']]]
+  ['transmitdata_0',['TransmitData',['../classMU__Modem.html#a4073269482792c7909eb3f063e92328e',1,'MU_Modem']]],
+  ['transmitdataasync_1',['TransmitDataAsync',['../classMU__Modem.html#a6631e32d207b6855fe2a8e48b20ad988',1,'MU_Modem']]]
 ];
