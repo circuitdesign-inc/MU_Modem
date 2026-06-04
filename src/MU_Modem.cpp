@@ -578,9 +578,9 @@ void MU_Modem::onCommandComplete(ModemError result)
                 // Parse specific value based on expected response
                 if (ev.type == MU_Modem_Response::RssiCurrentChannel)
                 {
-                    uint8_t rawRssi;
-                    if (parseResponseHex(rxBuf, rxLen, MU_GET_RSSI_CURRENT_CHANNEL_RESPONSE_PREFIX, 2, (uint32_t *)&rawRssi) == ModemError::Ok)
-                        ev.value = -(int16_t)rawRssi;
+                    uint32_t rawRssi;
+                    if (parseResponseHex(rxBuf, rxLen, MU_GET_RSSI_CURRENT_CHANNEL_RESPONSE_PREFIX, 2, &rawRssi) == ModemError::Ok)
+                        ev.value = -(int16_t)(uint8_t)rawRssi;
                 }
                 else if (ev.type == MU_Modem_Response::SerialNumber)
                 {
@@ -606,27 +606,27 @@ void MU_Modem::onCommandComplete(ModemError result)
                 }
                 else if (ev.type == MU_Modem_Response::Channel)
                 {
-                    uint8_t ch;
-                    if (parseResponseHex(rxBuf, rxLen, MU_SET_CHANNEL_RESPONSE_PREFIX, 2, (uint32_t *)&ch) == ModemError::Ok)
-                        ev.value = ch;
+                    uint32_t ch;
+                    if (parseResponseHex(rxBuf, rxLen, MU_SET_CHANNEL_RESPONSE_PREFIX, 2, &ch) == ModemError::Ok)
+                        ev.value = (uint8_t)ch;
                 }
                 else if (ev.type == MU_Modem_Response::GroupID)
                 {
-                    uint8_t gi;
-                    if (parseResponseHex(rxBuf, rxLen, MU_SET_GROUP_RESPONSE_PREFIX, 2, (uint32_t *)&gi) == ModemError::Ok)
-                        ev.value = gi;
+                    uint32_t gi;
+                    if (parseResponseHex(rxBuf, rxLen, MU_SET_GROUP_RESPONSE_PREFIX, 2, &gi) == ModemError::Ok)
+                        ev.value = (uint8_t)gi;
                 }
                 else if (ev.type == MU_Modem_Response::EquipmentID)
                 {
-                    uint8_t ei;
-                    if (parseResponseHex(rxBuf, rxLen, MU_SET_EQUIPMENT_RESPONSE_PREFIX, 2, (uint32_t *)&ei) == ModemError::Ok)
-                        ev.value = ei;
+                    uint32_t ei;
+                    if (parseResponseHex(rxBuf, rxLen, MU_SET_EQUIPMENT_RESPONSE_PREFIX, 2, &ei) == ModemError::Ok)
+                        ev.value = (uint8_t)ei;
                 }
                 else if (ev.type == MU_Modem_Response::DestinationID)
                 {
-                    uint8_t di;
-                    if (parseResponseHex(rxBuf, rxLen, MU_SET_DESTINATION_RESPONSE_PREFIX, 2, (uint32_t *)&di) == ModemError::Ok)
-                        ev.value = di;
+                    uint32_t di;
+                    if (parseResponseHex(rxBuf, rxLen, MU_SET_DESTINATION_RESPONSE_PREFIX, 2, &di) == ModemError::Ok)
+                        ev.value = (uint8_t)di;
                 }
             }
             m_asyncExpectedResponse = MU_Modem_Response::Idle;
