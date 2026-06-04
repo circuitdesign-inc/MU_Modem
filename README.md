@@ -6,7 +6,7 @@
 
 ## 概要
 
-このライブラリは、Arduinoでサーキットデザイン社製MUシリーズ無線モデム（MU-3-429及びMU-3-1216、MU-4-429）を制御するためのインターフェースを提供します。<br>
+このライブラリは、Arduinoでサーキットデザイン社製MUシリーズ無線モデムを制御するためのインターフェースを提供します。<br>
 シリアルコマンドインターフェースを介して、データの送受信やモデムの設定を簡単に行うことができます。
 
 MUシリーズについてはこちらをご参照ください。<br>
@@ -27,22 +27,19 @@ https://circuitdesign-inc.github.io/MU_Modem/
 ## インストール
 
 1.  GitHubリポジトリの **[Releases](https://github.com/circuitdesign-inc/MU_Modem/releases)** ページから、最新バージョンの **`MU_Modem-XXXX.zip`** をダウンロードします。
-    - **重要**: GitHubが自動生成する `Source code (zip)` にはサブモジュールが含まれていません。必ず **`MU_Modem-` で始まるZIPファイル** をダウンロードして使用してください。
 2.  Arduino IDEで、`スケッチ` > `ライブラリをインクルード` > `.ZIP形式のライブラリをインストール...` に移動します。
 3.  ダウンロードしたZIPファイルを選択します。
 
-> [!NOTE]
-> 本ライブラリはコードの一部にサブモジュール（`SerialModemBase`）を使用しています。
-> 開発のためにリポジトリをクローンする場合は、以下のコマンドを使用してサブモジュールを含めて取得してください：
-> ```bash
-> git clone --recursive https://github.com/circuitdesign-inc/MU_Modem.git
-> ```
+> [!IMPORTANT]
+> 本ライブラリは **[SerialModemBaseライブラリ](https://github.com/circuitdesign-inc/SerialModemBase)** に依存しています。
+> 同じ手順で SerialModemBase もインストールしてください。<br>
+> 未インストールの場合、コンパイル時に `SerialModemBase.h: No such file or directory` 等のエラーが発生します。
 
 ## 基本的な使い方
 
 ### ハードウェアのセットアップ
 
-MUモデムをArduinoなどのマイクロコントローラと接続するための基本的なセットアップ方法です。
+MUモデムをArduinoなどのマイコンと接続するための基本的なセットアップ方法です。
 詳細は各モデムのデータシートを必ずご確認ください。
 
 #### 必須の接続
@@ -77,7 +74,7 @@ MUモデムをArduinoなどのマイクロコントローラと接続するた�
 
 ### プログラム
 以下は、MUモデムを初期化し、データを受信し、5秒ごとにメッセージを送信する基本的なサンプルコードです。
-詳細なサンプルはexsamplesフォルダをご確認ください。
+詳細なサンプルはexamplesフォルダをご確認ください。
 
 ```cpp
 #include <MU_Modem.h>
@@ -151,13 +148,22 @@ void loop() {
 ```
 
 ## デバッグ
-platformioを使用している場合、ライブラリのデバッグ出力を有効にすることができます。
+ライブラリのデバッグ出力を有効にすることができます。<br>
+デバッグマクロは依存先の SerialModemBase ライブラリで定義されており、本ライブラリと SerialModemBase の両方のログが有効になります。
 
-デバッグ機能を有効にするには、platformio.iniに以下のビルドフラグ追加してください:
+### PlatformIOの場合
+platformio.iniに以下のビルドフラグ追加してください:
 ```
 build_flags = -D ENABLE_SERIAL_MODEM_DEBUG
 ```
 
+### Arduino IDEの場合
+ビルドフラグを設定できない環境では、SerialModemBase ライブラリのヘッダファイル(src/SerialModemBase.h)を直接編集してください。
+以下の行のコメントアウトを解除することで有効化されます。
+```cpp
+// #define ENABLE_SERIAL_MODEM_DEBUG
+```
+### 出力先の設定
 また、デバッグの出力先を以下の関数で指定する必要があります。
 ```cpp
 // デバッグの出力先を設定
